@@ -39,7 +39,7 @@ async function init() {
     if (admins.length === 0) {
       await sql`
         INSERT INTO users (id, name, role, pin)
-        VALUES (gen_random_uuid(), 'MatheusCordeiro', 'admin', 'MC1234Admin')
+        VALUES (gen_random_uuid(), 'MatheusCordeiro', 'admin', '010902')
       `;
       console.log('Admin MatheusCordeiro criado.');
     } else {
