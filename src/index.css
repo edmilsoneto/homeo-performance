@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+/* ===== CUSTOM THEME: Black + Neon Blue ===== */
+@theme {
+  --color-bg: #000000;
+  --color-bg-card: #0a0e17;
+  --color-bg-card-hover: #0f1520;
+  --color-bg-elevated: #111827;
+  --color-border: #1e293b;
+  --color-border-hover: #334155;
+
+  --color-neon: #00a8ff;
+  --color-neon-light: #38bdf8;
+  --color-neon-dark: #0077cc;
+  --color-neon-muted: #0c4a6e;
+  --color-neon-subtle: rgba(0, 168, 255, 0.08);
+  --color-neon-glow: rgba(0, 168, 255, 0.4);
+  --color-neon-glow-strong: rgba(0, 168, 255, 0.6);
+
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted: #64748b;
+
+  --color-good: #10b981;
+  --color-good-bg: rgba(16, 185, 129, 0.1);
+  --color-good-border: rgba(16, 185, 129, 0.3);
+  --color-bad: #ef4444;
+  --color-bad-bg: rgba(239, 68, 68, 0.1);
+  --color-bad-border: rgba(239, 68, 68, 0.3);
+
+  --color-excelente: #10b981;
+  --color-estavel: #6ee7b7;
+  --color-alerta: #f59e0b;
+  --color-critico: #ef4444;
+}
+
+/* ===== GLOBAL RESET & BASE ===== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #000000;
+  color: #f1f5f9;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* ===== SCROLLBAR STYLING ===== */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 100px;
+}
+
+/* ===== CUSTOM SLIDER ===== */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 8px;
+  border-radius: 100px;
+  background: linear-gradient(90deg, #1e293b, #1e293b);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #00a8ff;
+  box-shadow: 0 0 20px rgba(0, 168, 255, 0.6), 0 0 40px rgba(0, 168, 255, 0.3);
+  cursor: pointer;
+  border: 3px solid #000000;
+  transition: transform 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(1.2);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #00a8ff;
+  box-shadow: 0 0 20px rgba(0, 168, 255, 0.6), 0 0 40px rgba(0, 168, 255, 0.3);
+  cursor: pointer;
+  border: 3px solid #000000;
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-neon {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(0, 168, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(0, 168, 255, 0.7), 0 0 60px rgba(0, 168, 255, 0.3);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.4s ease-out forwards;
+}
+
+.animate-pulse-neon {
+  animation: pulse-neon 2s ease-in-out infinite;
+}
+
+/* Stagger children */
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 80ms; }
+.stagger > *:nth-child(3) { animation-delay: 160ms; }
+.stagger > *:nth-child(4) { animation-delay: 240ms; }
+.stagger > *:nth-child(5) { animation-delay: 320ms; }
+
+/* ===== UTILITY CLASSES ===== */
+.glow-box {
+  box-shadow: 0 0 20px rgba(0, 168, 255, 0.3), 0 0 40px rgba(0, 168, 255, 0.15);
+}
+
+.glow-text {
+  text-shadow: 0 0 20px rgba(0, 168, 255, 0.5);
+}
+
+.glass {
+  background: rgba(10, 14, 23, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(30, 41, 59, 0.8);
+}
+
+.card-base {
+  background: #0a0e17;
+  border: 1px solid #1e293b;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+}
+
+.card-base:hover {
+  border-color: #334155;
+}
+
+/* App.css override - remove default vite styles */
+.App {
+  text-align: unset;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
