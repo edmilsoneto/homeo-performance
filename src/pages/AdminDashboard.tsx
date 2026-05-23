@@ -246,6 +246,8 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
       shift: string;
       delta: number;
       type: 'pico' | 'queda';
+      todayEntropy: number;
+      baseEntropy: number;
       timestamp: number;
     }[] = [];
 
@@ -253,15 +255,18 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
       const all = getAllEntries(athlete.id);
       const points = generateDailyEntropyPoints(all);
       
-      // Look at the last 7 daily points
-      const recentPoints = points.slice(-7);
-      
-      recentPoints.forEach(pt => {
+      // Look at the last 7 daily points, starting from index 1 to safely compare with index - 1
+      for (let i = Math.max(1, points.length - 7); i < points.length; i++) {
+        const pt = points[i];
         const delta = pt.generalDelta;
         if (Math.abs(delta) > 15) {
+          const yesterdayPt = points[i - 1];
+          const baseEntropy = yesterdayPt.generalEntropy;
+          const todayEntropy = pt.generalEntropy;
+
           // Find the entries on that specific day
           const dayEntries = all.filter(e => e.date === pt.date);
-          if (dayEntries.length === 0) return;
+          if (dayEntries.length === 0) continue;
 
           // Find the last entry registered on that day (which triggered the calculation)
           const sorted = [...dayEntries].sort((a, b) => a.timestamp - b.timestamp);
@@ -279,10 +284,12 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
             shift: lastEntry.shift,
             delta: delta,
             type: delta > 15 ? 'pico' : 'queda',
+            todayEntropy: todayEntropy,
+            baseEntropy: baseEntropy,
             timestamp: lastEntry.timestamp
           });
         }
-      });
+      }
     });
 
     // Sort alerts by timestamp descending (most recent first)
@@ -360,8 +367,36 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
                     </span>
                   </div>
                   <p style={{ fontSize: 12, color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
-                    Ocorreu no dia <strong>{alert.weekday} ({alert.date})</strong> no turno da <strong>{alert.shift}</strong> com variação de <strong>{alert.delta > 0 ? '+' : ''}{alert.delta}%</strong>.
+                    Ocorreu no dia <strong>{alert.weekday} ({alert.date})</strong> no turno da <strong>{alert.shift}</strong>.
                   </p>
+                  
+                  {/* Detailed Entropy Metrics Sub-Grid */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: 8,
+                    background: 'rgba(0,0,0,0.2)',
+                    border: '1px solid rgba(255,255,255,0.03)',
+                    borderRadius: 12,
+                    padding: '8px 10px',
+                    marginTop: 4,
+                    textAlign: 'center'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span style={{ fontSize: 8, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Base (Ontem)</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9' }}>{alert.baseEntropy.toFixed(3)}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span style={{ fontSize: 8, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Entropia Geral</span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9' }}>{alert.todayEntropy.toFixed(3)}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <span style={{ fontSize: 8, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Variação</span>
+                      <span style={{ fontSize: 12, fontWeight: 800, color }}>
+                        {alert.delta > 0 ? `+` : ''}{alert.delta.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
                 </div>
               );
             })
