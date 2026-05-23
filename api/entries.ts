@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { sendPushNotification } from './_push_service';
 
 export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL);
@@ -40,6 +41,23 @@ export default async function handler(req, res) {
           VALUES (${userId}, ${date}, ${shift}, ${intensity}, ${feedback}, ${timestamp})
           RETURNING *
         `;
+
+        // Notify Coach (all admin users)
+        try {
+          const athleteRows = await sql`SELECT name FROM users WHERE id = ${userId}`;
+          const athleteName = athleteRows[0]?.name || 'Um atleta';
+          const adminRows = await sql`SELECT id FROM users WHERE role = 'admin'`;
+          for (const admin of adminRows) {
+            await sendPushNotification(admin.id, {
+              title: 'Novo Registro de Turno',
+              body: `${athleteName} respondeu o turno da ${shift} com nota ${intensity}/10.`,
+              data: { url: '/' }
+            });
+          }
+        } catch (pushErr) {
+          console.error('Erro ao processar notificações push do treinador:', pushErr);
+        }
+
         return res.status(201).json(result[0]);
       }
     } catch (error) {

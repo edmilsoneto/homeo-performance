@@ -17,6 +17,7 @@ export interface User {
   name: string;
   role: UserRole;
   pin: string;
+  whatsapp?: string;
 }
 
 export interface AuthState {

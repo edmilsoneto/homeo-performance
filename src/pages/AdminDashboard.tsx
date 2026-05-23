@@ -4,7 +4,8 @@ import { generateDailyEntropyPoints, calculateDeltaPercentage } from '../utils/e
 import { AthleteDashboard } from './AthleteDashboard';
 import {
   Users, ChevronRight, AlertTriangle, ArrowLeft,
-  Database, Trash2, Calendar, UserPlus, X, Activity
+  Database, Trash2, Calendar, UserPlus, X, Activity,
+  MessageSquare
 } from 'lucide-react';
 
 interface Props {
@@ -12,7 +13,7 @@ interface Props {
   getEntries: (userId: string, days?: number) => ShiftEntry[];
   getAllEntries: (userId: string) => ShiftEntry[];
   getTodayEntries: (userId: string) => ShiftEntry[];
-  registerAthlete: (name: string, pin: string) => Promise<any> | void;
+  registerAthlete: (name: string, pin: string, whatsapp?: string) => Promise<any> | void;
   deleteAthlete: (userId: string) => void;
   generateMockData: (userId: string) => void;
   clearEntries: (userId: string) => void;
@@ -152,7 +153,7 @@ export const AdminDashboard = ({ athletes, getEntries, getAllEntries, getTodayEn
                     <p style={{ fontSize: 15, fontWeight: 600, color: '#f1f5f9', marginBottom: 3 }}>
                       {athlete.name}
                     </p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                       <span style={{
                         fontSize: 11, fontWeight: 600,
                         color: isAlert ? '#ef4444' : points.length > 0 ? '#10b981' : '#475569',
@@ -162,6 +163,11 @@ export const AdminDashboard = ({ athletes, getEntries, getAllEntries, getTodayEn
                       {lastEntry && (
                         <span style={{ fontSize: 10, color: '#475569' }}>
                           · Último: {lastEntry.shift}
+                        </span>
+                      )}
+                      {athlete.whatsapp && (
+                        <span style={{ fontSize: 10, color: '#00a8ff', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          · <span style={{ textDecoration: 'underline' }}>WhatsApp: {athlete.whatsapp}</span>
                         </span>
                       )}
                     </div>
@@ -201,8 +207,8 @@ export const AdminDashboard = ({ athletes, getEntries, getAllEntries, getTodayEn
       {isRegistering && (
         <RegisterAthleteModal
           onClose={() => setIsRegistering(false)}
-          onRegister={(name, pin) => {
-            registerAthlete(name, pin);
+          onRegister={(name, pin, whatsapp) => {
+            registerAthlete(name, pin, whatsapp);
             setIsRegistering(false);
           }}
         />
@@ -423,28 +429,115 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
         </div>
       </div>
 
-      {/* List of athletes who answered today */}
+      {/* Controle de Preenchimento dos Turnos de Hoje */}
       <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 20, padding: 20 }}>
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>
-          Atletas que Responderam Hoje
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Activity style={{ width: 15, height: 15, color: '#00a8ff' }} />
+          Controle de Turnos de Hoje
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {athletes.map(athlete => {
             const today = getTodayEntries(athlete.id);
-            if (today.length === 0) return null;
-
+            const shifts: ('Manhã' | 'Tarde' | 'Noite')[] = ['Manhã', 'Tarde', 'Noite'];
+            
             return (
               <div key={athlete.id} style={{
                 background: '#0f1520', border: '1px solid #1e293b',
-                padding: '12px 16px', borderRadius: 14, display: 'flex', alignItems: 'center'
+                padding: '16px', borderRadius: 16, display: 'flex', flexDirection: 'column', gap: 12
               }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{athlete.name}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>{athlete.name}</span>
+                  {athlete.whatsapp && (
+                    <span style={{ fontSize: 11, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <MessageSquare style={{ width: 12, height: 12, color: '#00a8ff' }} />
+                      {athlete.whatsapp}
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {shifts.map(shiftName => {
+                    const entry = today.find(e => e.shift === shiftName);
+                    
+                    if (entry) {
+                      return (
+                        <div key={shiftName} style={{
+                          background: 'rgba(0,168,255,0.05)',
+                          border: '1px solid rgba(0,168,255,0.15)',
+                          borderRadius: 12,
+                          padding: '10px 8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 2,
+                          textAlign: 'center'
+                        }}>
+                          <span style={{ fontSize: 10, color: '#00a8ff', fontWeight: 600 }}>{shiftName}</span>
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#f1f5f9' }}>{entry.intensity}/10</span>
+                        </div>
+                      );
+                    } else {
+                      const msg = `Olá, ${athlete.name}! Lembrete do Homeo Performance para você preencher a nota do turno da *${shiftName}* de hoje. Acesse o aplicativo e registre! Obrigado.`;
+                      const cleanPhone = athlete.whatsapp ? athlete.whatsapp.replace(/\D/g, '') : '';
+                      const whatsappLink = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(msg)}`;
+
+                      return (
+                        <div key={shiftName} style={{
+                          background: 'rgba(255,255,255,0.01)',
+                          border: '1px solid rgba(255,255,255,0.04)',
+                          borderRadius: 12,
+                          padding: '10px 8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          textAlign: 'center'
+                        }}>
+                          <span style={{ fontSize: 10, color: '#64748b', fontWeight: 600 }}>{shiftName}</span>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>Pendente</span>
+                          
+                          {athlete.whatsapp && (
+                            <a
+                              href={whatsappLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3,
+                                background: 'rgba(16,185,129,0.12)',
+                                border: '1px solid rgba(16,185,129,0.25)',
+                                color: '#10b981',
+                                padding: '4px 8px',
+                                borderRadius: 8,
+                                fontSize: 9,
+                                fontWeight: 800,
+                                textDecoration: 'none',
+                                transition: 'all 0.2s',
+                              }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.background = 'rgba(16,185,129,0.2)';
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.background = 'rgba(16,185,129,0.12)';
+                              }}
+                            >
+                              <MessageSquare style={{ width: 10, height: 10 }} />
+                              Lembrar
+                            </a>
+                          )}
+                        </div>
+                      );
+                    }
+                  })}
+                </div>
               </div>
             );
           })}
-          {athletes.every(a => getTodayEntries(a.id).length === 0) && (
+          {athletes.length === 0 && (
             <p style={{ color: '#64748b', fontSize: 12 }}>
-              Nenhum turno registrado hoje.
+              Nenhum atleta cadastrado na equipe.
             </p>
           )}
         </div>
@@ -453,15 +546,16 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
   );
 }
 
-function RegisterAthleteModal({ onClose, onRegister }: { onClose: () => void, onRegister: (name: string, pin: string) => void }) {
+function RegisterAthleteModal({ onClose, onRegister }: { onClose: () => void, onRegister: (name: string, pin: string, whatsapp?: string) => void }) {
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = () => {
     if (!name.trim()) { setError('Nome é obrigatório'); return; }
     if (pin.length < 4) { setError('O PIN precisa ter pelo menos 4 dígitos'); return; }
-    onRegister(name.trim(), pin);
+    onRegister(name.trim(), pin, whatsapp.trim() || undefined);
   };
 
   return (
@@ -497,7 +591,20 @@ function RegisterAthleteModal({ onClose, onRegister }: { onClose: () => void, on
             />
           </div>
           <div>
-            <label style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 6, display: 'block' }}>Criar Senha</label>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 6, display: 'block' }}>WhatsApp do Atleta</label>
+            <input
+              type="text" placeholder="Ex: 5511999999999" value={whatsapp} onChange={e => setWhatsapp(e.target.value)}
+              style={{
+                width: '100%', padding: '14px 16px', borderRadius: 14, background: '#000', border: '1px solid #1e293b',
+                color: '#f1f5f9', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+              }}
+            />
+            <p style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+              Código do país e DDD (apenas números). Ex: 5511999999999
+            </p>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', marginBottom: 6, display: 'block' }}>Criar Senha (PIN)</label>
             <input
               type="password" placeholder="Mínimo 4 dígitos" value={pin} onChange={e => setPin(e.target.value)}
               style={{
@@ -571,7 +678,9 @@ function AthleteDetail({ athlete, allEntries, onBack, onGenerateMock, onClear }:
         </div>
         <div>
           <p style={{ fontSize: 18, fontWeight: 700, color: '#f1f5f9' }}>{athlete.name}</p>
-          <p style={{ fontSize: 12, color: '#64748b' }}>Análise detalhada do sismógrafo de entropia</p>
+          <p style={{ fontSize: 12, color: '#64748b' }}>
+            Análise detalhada do sismógrafo de entropia {athlete.whatsapp ? `· WhatsApp: ${athlete.whatsapp}` : ''}
+          </p>
         </div>
       </div>
 

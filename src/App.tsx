@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { LoginScreen } from './pages/LoginScreen';
 import { RegistrationScreen } from './pages/RegistrationScreen';
@@ -9,8 +10,24 @@ function App() {
     loading, auth, login, logout, registerAthlete,
     getAthletes, saveEntry, getEntries, getAllEntries,
     generateMockData, clearEntries, getTodayEntries, deleteAthlete,
+    subscribeToPushNotifications,
   } = useAppData();
 
+  // Automatic push notification subscription on login
+  useEffect(() => {
+    if (auth.isLoggedIn && auth.currentUser) {
+      if ('Notification' in window) {
+        if (Notification.permission === 'default') {
+          const timer = setTimeout(() => {
+            subscribeToPushNotifications(auth.currentUser!.id);
+          }, 1500);
+          return () => clearTimeout(timer);
+        } else if (Notification.permission === 'granted') {
+          subscribeToPushNotifications(auth.currentUser.id);
+        }
+      }
+    }
+  }, [auth.isLoggedIn, auth.currentUser, subscribeToPushNotifications]);
 
   const handleLogin = async (name: string, pin: string): Promise<boolean> => {
     return await login(name, pin);

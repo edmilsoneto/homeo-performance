@@ -1,9 +1,34 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { User, AppData, ShiftEntry, AuthState } from '../types';
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export function useAppData() {
   const [data, setData] = useState<AppData>({ users: [], entries: {} });
-  const [auth, setAuth] = useState<AuthState>({ isLoggedIn: false, currentUser: null });
+  const [auth, setAuth] = useState<AuthState>(() => {
+    const saved = localStorage.getItem('homeo_auth');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        // ignore
+      }
+    }
+    return { isLoggedIn: false, currentUser: null };
+  });
   const [loading, setLoading] = useState(true);
 
   // Load all users on mount
@@ -27,25 +52,14 @@ export function useAppData() {
     loadUsers();
   }, []);
 
-  const login = useCallback(async (userOrName: any, pin?: string) => {
-    // If it's a direct user object (legacy fallback)
-    if (userOrName.id && !pin) {
-      setAuth({ isLoggedIn: true, currentUser: userOrName });
-      return true;
-    }
+  // Load entries when logged in or when auth changes
+  useEffect(() => {
+    if (!auth.isLoggedIn || !auth.currentUser) return;
     
-    // API login
-    try {
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: userOrName, pin })
-      });
-      if (res.ok) {
-        const user = await res.json();
-        setAuth({ isLoggedIn: true, currentUser: user });
-        
-        // Load entries for this user (if athlete) or all entries (if admin)
+    async function loadEntries() {
+      const user = auth.currentUser;
+      if (!user) return;
+      try {
         const entriesRes = await fetch(user.role === 'admin' ? '/api/entries' : `/api/entries?userId=${user.id}`);
         if (entriesRes.ok) {
           const rawEntries = await entriesRes.json();
@@ -64,6 +78,34 @@ export function useAppData() {
           });
           setData(prev => ({ ...prev, entries: entriesMap }));
         }
+      } catch (err) {
+        console.error('Failed to load entries', err);
+      }
+    }
+    loadEntries();
+  }, [auth.isLoggedIn, auth.currentUser]);
+
+  const login = useCallback(async (userOrName: any, pin?: string) => {
+    // If it's a direct user object (legacy fallback)
+    if (userOrName.id && !pin) {
+      const newAuth = { isLoggedIn: true, currentUser: userOrName };
+      setAuth(newAuth);
+      localStorage.setItem('homeo_auth', JSON.stringify(newAuth));
+      return true;
+    }
+    
+    // API login
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: userOrName, pin })
+      });
+      if (res.ok) {
+        const user = await res.json();
+        const newAuth = { isLoggedIn: true, currentUser: user };
+        setAuth(newAuth);
+        localStorage.setItem('homeo_auth', JSON.stringify(newAuth));
         return true;
       }
       return false;
@@ -75,6 +117,7 @@ export function useAppData() {
 
   const logout = useCallback(() => {
     setAuth({ isLoggedIn: false, currentUser: null });
+    localStorage.removeItem('homeo_auth');
     setData({ users: [], entries: {} }); // clear data on logout for security
     // Reload users just in case
     fetch('/api/athletes').then(r => r.json()).then(athletes => {
@@ -82,12 +125,12 @@ export function useAppData() {
     });
   }, []);
 
-  const registerAthlete = useCallback(async (name: string, pin: string) => {
+  const registerAthlete = useCallback(async (name: string, pin: string, whatsapp?: string) => {
     try {
       const res = await fetch('/api/athletes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, pin })
+        body: JSON.stringify({ name, pin, whatsapp })
       });
       if (res.ok) {
         const user = await res.json();
@@ -254,6 +297,46 @@ export function useAppData() {
 
   // Removed findUser as auth is now API based via login()
 
+  const subscribeToPushNotifications = useCallback(async (userId: string) => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      console.warn('Push notifications are not supported in this browser.');
+      return false;
+    }
+
+    try {
+      // 1. Get VAPID public key
+      const keyRes = await fetch('/api/push');
+      if (!keyRes.ok) return false;
+      const { publicKey } = await keyRes.json();
+
+      // 2. Request permission
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.warn('Push notification permission denied.');
+        return false;
+      }
+
+      // 3. Register subscription
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+
+      // 4. Save subscription on backend
+      const saveRes = await fetch('/api/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, subscription })
+      });
+
+      return saveRes.ok;
+    } catch (err) {
+      console.error('Failed to subscribe to push notifications', err);
+      return false;
+    }
+  }, []);
+
   return {
     loading,
     data,
@@ -269,5 +352,6 @@ export function useAppData() {
     generateMockData,
     clearEntries,
     deleteAthlete,
+    subscribeToPushNotifications,
   };
 }
