@@ -23,16 +23,28 @@ export default async function handler(req, res) {
     try {
       if (Array.isArray(req.body)) {
         const entries = req.body;
-        const inserted = [];
+        if (entries.length === 0) {
+          return res.status(201).json({ count: 0, inserted: [] });
+        }
+
+        const valueStrings = [];
+        const params = [];
+        let index = 1;
+
         for (const entry of entries) {
           const { userId, date, shift, intensity, feedback, timestamp } = entry;
-          const result = await sql`
-            INSERT INTO shifts (user_id, date, shift, intensity, feedback, timestamp)
-            VALUES (${userId}, ${date}, ${shift}, ${intensity}, ${feedback}, ${timestamp})
-            RETURNING *
-          `;
-          inserted.push(result[0]);
+          valueStrings.push(`($${index}, $${index+1}, $${index+2}, $${index+3}, $${index+4}, $${index+5})`);
+          params.push(userId, date, shift, intensity || 0, feedback, timestamp);
+          index += 6;
         }
+
+        const queryText = `
+          INSERT INTO shifts (user_id, date, shift, intensity, feedback, timestamp)
+          VALUES ${valueStrings.join(', ')}
+          RETURNING *
+        `;
+
+        const inserted = await sql(queryText, params);
         return res.status(201).json({ count: inserted.length, inserted });
       } else {
         const { userId, date, shift, intensity, feedback, timestamp } = req.body;

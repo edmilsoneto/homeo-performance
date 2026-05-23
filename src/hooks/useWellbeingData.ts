@@ -213,17 +213,17 @@ export function useAppData() {
     const now = new Date();
     const shifts = ['Manhã', 'Tarde', 'Noite'];
     
-    for (let i = 59; i >= 0; i--) {
+    for (let i = 364; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
       const dateStr = d.toISOString().split('T')[0];
-      const dayIndex = 59 - i;
+      const dayIndex = 364 - i;
       
       let pList: string[] = [];
-      if ((dayIndex >= 12 && dayIndex <= 18) || (dayIndex >= 42 && dayIndex <= 48)) {
-        // High volatility periods (spikes)
+      if ((dayIndex % 30 >= 12 && dayIndex % 30 <= 18)) {
+        // High volatility periods (spikes) periodically every 30 days
         pList = ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D'];
-      } else if (dayIndex >= 19 && dayIndex <= 28) {
+      } else if (dayIndex % 30 >= 19 && dayIndex % 30 <= 25) {
         // Recovery periods
         pList = ['Grupo A', 'Grupo B', 'Grupo B', 'Grupo C', 'Grupo C'];
       } else {
@@ -272,7 +272,7 @@ export function useAppData() {
             }
           };
         });
-        alert('60 dias de dados de calibração gerados com sucesso!');
+        alert('1 ano de dados de calibração gerados com sucesso!');
       } else {
         alert('Erro ao gerar dados sintéticos.');
       }
