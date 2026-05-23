@@ -142,14 +142,9 @@ export const RegistrationScreen = ({ userName, todayEntries, allEntries, onSave 
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{shift}</span>
                   </div>
                   {group ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: '#f1f5f9' }}>
-                        {entry && entry.intensity > 0 ? `${entry.intensity}/10` : ''}
-                      </span>
-                      <span style={{ fontSize: 10, fontWeight: 700, color: GROUP_LABELS[group].color }}>
-                        ({GROUP_LABELS[group].title})
-                      </span>
-                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: GROUP_LABELS[group].color }}>
+                      {entry && entry.intensity > 0 ? `${entry.intensity}/10` : GROUP_LABELS[group].title}
+                    </span>
                   ) : (
                     <span style={{ fontSize: 11, color: '#475569' }}>Não registrado</span>
                   )}
@@ -165,24 +160,7 @@ export const RegistrationScreen = ({ userName, todayEntries, allEntries, onSave 
   const NextShiftIcon = SHIFT_ICON[nextShift];
   const nextShiftColor = SHIFT_COLOR[nextShift];
 
-  // Dynamic status text based on selected score
-  let scoreFeedback = '';
-  let feedbackColor = '#64748b';
-  if (selectedScore !== null) {
-    if (selectedScore >= 9) {
-      scoreFeedback = `Excelente (${selectedScore}/10) · Grupo A`;
-      feedbackColor = '#10b981';
-    } else if (selectedScore >= 7) {
-      scoreFeedback = `Bom (${selectedScore}/10) · Grupo B`;
-      feedbackColor = '#3b82f6';
-    } else if (selectedScore >= 5) {
-      scoreFeedback = `Regular (${selectedScore}/10) · Grupo C`;
-      feedbackColor = '#f59e0b';
-    } else {
-      scoreFeedback = `Crítico (${selectedScore}/10) · Grupo D`;
-      feedbackColor = '#ef4444';
-    }
-  }
+
 
   return (
     <div style={{
@@ -278,22 +256,7 @@ export const RegistrationScreen = ({ userName, todayEntries, allEntries, onSave 
             })}
           </div>
 
-          {selectedScore !== null && (
-            <div style={{
-              marginTop: 10,
-              padding: '10px 14px',
-              borderRadius: 12,
-              background: 'rgba(255,255,255,0.02)',
-              border: '1px solid #1e293b',
-              textAlign: 'center',
-              fontSize: 12,
-              fontWeight: 700,
-              color: feedbackColor,
-              transition: 'all 0.2s'
-            }}>
-              {scoreFeedback}
-            </div>
-          )}
+
         </div>
 
         {/* Save Button */}
