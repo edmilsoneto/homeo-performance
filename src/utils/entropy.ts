@@ -163,15 +163,52 @@ export const generateDailyEntropyPoints = (allEntries: ShiftEntry[]): EntropyPoi
     });
   });
 
-  // Calculate delta percentages point-to-point (Today vs Yesterday)
+  // Calculate delta percentages based on same-weekday historical averages
   for (let i = 0; i < points.length; i++) {
     const today = points[i];
-    if (i > 0) {
-      const yesterday = points[i - 1];
-      today.generalDelta = calculateDeltaPercentage(today.generalEntropy, yesterday.generalEntropy);
-      today.morningDelta = calculateDeltaPercentage(today.morningEntropy, yesterday.morningEntropy);
-      today.afternoonDelta = calculateDeltaPercentage(today.afternoonEntropy, yesterday.afternoonEntropy);
-      today.nightDelta = calculateDeltaPercentage(today.nightEntropy, yesterday.nightEntropy);
+    
+    // Determine weekday index for today's point (0 = Sunday, 1 = Monday, etc.)
+    const dateObj = new Date(today.date + 'T12:00:00');
+    const targetWeekday = dateObj.getDay();
+
+    // Find all past points in the points list with the same weekday
+    const pastSameWeekdayPoints = points.slice(0, i).filter(p => {
+      const d = new Date(p.date + 'T12:00:00');
+      return d.getDay() === targetWeekday;
+    });
+
+    if (pastSameWeekdayPoints.length > 0) {
+      // Calculate average of past same-weekdays
+      const sumGeneral = pastSameWeekdayPoints.reduce((acc, p) => acc + p.generalEntropy, 0);
+      const avgGeneral = sumGeneral / pastSameWeekdayPoints.length;
+
+      const sumMorning = pastSameWeekdayPoints.reduce((acc, p) => acc + p.morningEntropy, 0);
+      const avgMorning = sumMorning / pastSameWeekdayPoints.length;
+
+      const sumAfternoon = pastSameWeekdayPoints.reduce((acc, p) => acc + p.afternoonEntropy, 0);
+      const avgAfternoon = sumAfternoon / pastSameWeekdayPoints.length;
+
+      const sumNight = pastSameWeekdayPoints.reduce((acc, p) => acc + p.nightEntropy, 0);
+      const avgNight = sumNight / pastSameWeekdayPoints.length;
+
+      today.generalDelta = calculateDeltaPercentage(today.generalEntropy, avgGeneral);
+      today.morningDelta = calculateDeltaPercentage(today.morningEntropy, avgMorning);
+      today.afternoonDelta = calculateDeltaPercentage(today.afternoonEntropy, avgAfternoon);
+      today.nightDelta = calculateDeltaPercentage(today.nightEntropy, avgNight);
+    } else {
+      // Fallback: compare to yesterday if it's the first occurrence of this weekday in history
+      if (i > 0) {
+        const yesterday = points[i - 1];
+        today.generalDelta = calculateDeltaPercentage(today.generalEntropy, yesterday.generalEntropy);
+        today.morningDelta = calculateDeltaPercentage(today.morningEntropy, yesterday.morningEntropy);
+        today.afternoonDelta = calculateDeltaPercentage(today.afternoonEntropy, yesterday.afternoonEntropy);
+        today.nightDelta = calculateDeltaPercentage(today.nightEntropy, yesterday.nightEntropy);
+      } else {
+        today.generalDelta = 0;
+        today.morningDelta = 0;
+        today.afternoonDelta = 0;
+        today.nightDelta = 0;
+      }
     }
   }
 

@@ -248,6 +248,7 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
       type: 'pico' | 'queda';
       todayEntropy: number;
       baseEntropy: number;
+      weekdayLabel: string;
       timestamp: number;
     }[] = [];
 
@@ -260,8 +261,26 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
         const pt = points[i];
         const delta = pt.generalDelta;
         if (Math.abs(delta) > 15) {
-          const yesterdayPt = points[i - 1];
-          const baseEntropy = yesterdayPt.generalEntropy;
+          // Determine target weekday
+          const dateObj = new Date(pt.date + 'T12:00:00');
+          const targetWeekday = dateObj.getDay();
+          const weekdayNames = ['Domingos', 'Segundas', 'Terças', 'Quartas', 'Quintas', 'Sextas', 'Sábados'];
+          const weekdayLabel = `Média ${weekdayNames[targetWeekday]}`;
+
+          // Find all past points with the same weekday
+          const pastSameWeekdayPoints = points.slice(0, i).filter(p => {
+            const d = new Date(p.date + 'T12:00:00');
+            return d.getDay() === targetWeekday;
+          });
+
+          let baseEntropy = pt.generalEntropy;
+          if (pastSameWeekdayPoints.length > 0) {
+            const sumGeneral = pastSameWeekdayPoints.reduce((acc, p) => acc + p.generalEntropy, 0);
+            baseEntropy = sumGeneral / pastSameWeekdayPoints.length;
+          } else if (i > 0) {
+            baseEntropy = points[i - 1].generalEntropy;
+          }
+
           const todayEntropy = pt.generalEntropy;
 
           // Find the entries on that specific day
@@ -272,7 +291,6 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
           const sorted = [...dayEntries].sort((a, b) => a.timestamp - b.timestamp);
           const lastEntry = sorted[sorted.length - 1];
           
-          const dateObj = new Date(pt.date + 'T12:00:00');
           const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
           const formattedDate = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'numeric' });
 
@@ -286,6 +304,7 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
             type: delta > 15 ? 'pico' : 'queda',
             todayEntropy: todayEntropy,
             baseEntropy: baseEntropy,
+            weekdayLabel: weekdayLabel,
             timestamp: lastEntry.timestamp
           });
         }
@@ -383,7 +402,7 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
                     textAlign: 'center'
                   }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <span style={{ fontSize: 8, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Base (Ontem)</span>
+                      <span style={{ fontSize: 8, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>{alert.weekdayLabel}</span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9' }}>{alert.baseEntropy.toFixed(3)}</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
