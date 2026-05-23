@@ -10,6 +10,7 @@ function App() {
     loading, auth, login, logout, registerAthlete,
     getAthletes, saveEntry, getEntries, getAllEntries,
     generateMockData, clearEntries, getTodayEntries, deleteAthlete,
+    loadAthleteEntries,
     subscribeToPushNotifications,
   } = useAppData();
 
@@ -28,6 +29,19 @@ function App() {
       }
     }
   }, [auth.isLoggedIn, auth.currentUser, subscribeToPushNotifications]);
+
+  // Auto-refresh admin entries every 30 seconds
+  useEffect(() => {
+    if (!auth.isLoggedIn || !auth.currentUser || auth.currentUser.role !== 'admin') return;
+    const refreshAll = async () => {
+      const athletes = getAthletes();
+      for (const a of athletes) {
+        await loadAthleteEntries(a.id);
+      }
+    };
+    const interval = setInterval(refreshAll, 30000);
+    return () => clearInterval(interval);
+  }, [auth.isLoggedIn, auth.currentUser, getAthletes, loadAthleteEntries]);
 
   const handleLogin = async (name: string, pin: string): Promise<boolean> => {
     return await login(name, pin);
@@ -106,6 +120,7 @@ function App() {
         deleteAthlete={deleteAthlete}
         generateMockData={generateMockData}
         clearEntries={clearEntries}
+        loadAthleteEntries={loadAthleteEntries}
       />
     </Layout>
   );

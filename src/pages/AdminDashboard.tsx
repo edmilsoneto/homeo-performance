@@ -17,9 +17,10 @@ interface Props {
   deleteAthlete: (userId: string) => void;
   generateMockData: (userId: string) => void;
   clearEntries: (userId: string) => void;
+  loadAthleteEntries: (userId: string) => Promise<void>;
 }
 
-export const AdminDashboard = ({ athletes, getEntries, getAllEntries, getTodayEntries, registerAthlete, deleteAthlete, generateMockData, clearEntries }: Props) => {
+export const AdminDashboard = ({ athletes, getEntries, getAllEntries, getTodayEntries, registerAthlete, deleteAthlete, generateMockData, clearEntries, loadAthleteEntries }: Props) => {
   const [selectedAthlete, setSelectedAthlete] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'daily' | 'athletes'>('daily');
   const [isRegistering, setIsRegistering] = useState(false);
@@ -121,7 +122,10 @@ export const AdminDashboard = ({ athletes, getEntries, getAllEntries, getTodayEn
               return (
                 <button
                   key={athlete.id}
-                  onClick={() => setSelectedAthlete(athlete)}
+                  onClick={async () => {
+                    await loadAthleteEntries(athlete.id);
+                    setSelectedAthlete(athlete);
+                  }}
                   style={{
                     width: '100%', padding: '18px 20px', borderRadius: 20,
                     background: '#0a0e17', border: '1px solid #1e293b',

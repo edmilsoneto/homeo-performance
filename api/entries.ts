@@ -1,85 +1,70 @@
 import { neon } from '@neondatabase/serverless';
-import { sendPushNotification } from './_push_service';
 
-export default async function handler(req, res) {
-  const sql = neon(process.env.DATABASE_URL);
+export default async function handler(req: any, res: any) {
+  const sql = neon(process.env.DATABASE_URL!);
 
+  // ── GET ──────────────────────────────────────────────────────────────
   if (req.method === 'GET') {
     const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId é obrigatório' });
+    }
     try {
-      let entries;
-      if (userId) {
-        entries = await sql`SELECT * FROM shifts WHERE user_id = ${userId} ORDER BY timestamp ASC`;
-      } else {
-        entries = await sql`SELECT * FROM shifts ORDER BY timestamp ASC`;
-      }
-      return res.status(200).json(entries);
-    } catch (error) {
-      console.error('GET /api/entries error:', error);
+      const rows = await sql`
+        SELECT id, user_id, date, shift, intensity, feedback, timestamp
+        FROM shifts
+        WHERE user_id = ${userId}
+        ORDER BY timestamp ASC
+      `;
+      return res.status(200).json(rows);
+    } catch (error: any) {
+      console.error('GET /api/entries error:', error?.message || error);
       return res.status(500).json({ error: 'Erro ao buscar registros' });
     }
   }
 
+  // ── POST ─────────────────────────────────────────────────────────────
   if (req.method === 'POST') {
     try {
+      // Batch insert (array of entries)
       if (Array.isArray(req.body)) {
         const entries = req.body;
         if (entries.length === 0) {
           return res.status(201).json({ count: 0, inserted: [] });
         }
 
-        // Build parameterized bulk INSERT using neon's sql.unsafe for dynamic queries
         const valueStrings: string[] = [];
         const params: any[] = [];
-        let index = 1;
-
-        for (const entry of entries) {
-          const { userId, date, shift, intensity, feedback, timestamp } = entry;
-          valueStrings.push(`($${index}, $${index+1}, $${index+2}, $${index+3}, $${index+4}, $${index+5})`);
-          params.push(userId, date, shift, intensity ?? 0, feedback, timestamp);
-          index += 6;
+        let i = 1;
+        for (const e of entries) {
+          valueStrings.push(`($${i},$${i+1},$${i+2},$${i+3},$${i+4},$${i+5})`);
+          params.push(e.userId, e.date, e.shift, e.intensity ?? 0, e.feedback, e.timestamp);
+          i += 6;
         }
-
-        const queryText = `INSERT INTO shifts (user_id, date, shift, intensity, feedback, timestamp) VALUES ${valueStrings.join(', ')} RETURNING *`;
-        const inserted = await sql.unsafe(queryText, params);
-        return res.status(201).json({ count: inserted.length, inserted });
-
-      } else {
-        // Single entry insert
-        const { userId, date, shift, intensity, feedback, timestamp } = req.body;
-        const result = await sql`
-          INSERT INTO shifts (user_id, date, shift, intensity, feedback, timestamp)
-          VALUES (${userId}, ${date}, ${shift}, ${intensity}, ${feedback}, ${timestamp})
-          RETURNING *
-        `;
-        const insertedEntry = result[0];
-
-        // Fire-and-forget push notification to coach
-        (async () => {
-          try {
-            const athleteRows = await sql`SELECT name FROM users WHERE id = ${userId}`;
-            const athleteName = athleteRows[0]?.name || 'Um atleta';
-            const adminRows = await sql`SELECT id FROM users WHERE role = 'admin'`;
-            for (const admin of adminRows) {
-              await sendPushNotification(admin.id, {
-                title: 'Novo Registro de Turno',
-                body: `${athleteName} respondeu o turno da ${shift} com nota ${intensity}/10.`,
-                data: { url: '/' }
-              });
-            }
-          } catch (pushErr) {
-            console.error('Push notification error:', pushErr);
-          }
-        })();
-
-        return res.status(201).json(insertedEntry);
+        const q = `INSERT INTO shifts(user_id,date,shift,intensity,feedback,timestamp) VALUES ${valueStrings.join(',')} RETURNING id,user_id,date,shift,intensity,feedback,timestamp`;
+        const result = await sql.unsafe(q, params);
+        return res.status(201).json({ count: result.length, inserted: result });
       }
-    } catch (error) {
-      console.error('POST /api/entries error:', error);
+
+      // Single entry insert
+      const { userId, date, shift, intensity, feedback, timestamp } = req.body;
+      if (!userId || !date || !shift) {
+        return res.status(400).json({ error: 'userId, date e shift são obrigatórios' });
+      }
+      const rows = await sql`
+        INSERT INTO shifts(user_id, date, shift, intensity, feedback, timestamp)
+        VALUES (${userId}, ${date}, ${shift}, ${intensity ?? 0}, ${feedback}, ${timestamp})
+        RETURNING id, user_id, date, shift, intensity, feedback, timestamp
+      `;
+      return res.status(201).json(rows[0]);
+
+    } catch (error: any) {
+      console.error('POST /api/entries error:', error?.message || error);
       return res.status(500).json({ error: 'Erro ao salvar registro(s)' });
     }
   }
 
+  // ── DELETE ────────────────────────────────────────────────────────────
   if (req.method === 'DELETE') {
     const { userId } = req.query;
     try {
@@ -89,8 +74,8 @@ export default async function handler(req, res) {
         await sql`DELETE FROM shifts`;
       }
       return res.status(200).json({ message: 'Registros apagados' });
-    } catch (error) {
-      console.error('DELETE /api/entries error:', error);
+    } catch (error: any) {
+      console.error('DELETE /api/entries error:', error?.message || error);
       return res.status(500).json({ error: 'Erro ao apagar registros' });
     }
   }
