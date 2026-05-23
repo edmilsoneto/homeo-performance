@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { User, ShiftEntry } from '../types';
-import { determineGroup, generateDailyEntropyPoints, calculateDeltaPercentage } from '../utils/entropy';
+import { generateDailyEntropyPoints, calculateDeltaPercentage } from '../utils/entropy';
 import { AthleteDashboard } from './AthleteDashboard';
 import {
   Users, ChevronRight, AlertTriangle, ArrowLeft,
@@ -263,10 +263,9 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
         </div>
       </div>
 
-      {/* Athletes requiring attention today */}
       <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 20, padding: 20 }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>
-          Turnos Preenchidos Hoje (Feedback Categórico)
+          Atletas que Responderam Hoje
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {athletes.map(athlete => {
@@ -276,24 +275,9 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
             return (
               <div key={athlete.id} style={{
                 background: '#0f1520', border: '1px solid #1e293b',
-                padding: '12px 16px', borderRadius: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                padding: '12px 16px', borderRadius: 14, display: 'flex', alignItems: 'center'
               }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9', marginRight: 12 }}>{athlete.name}</span>
-                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '75%' }}>
-                  {today.map(e => {
-                    const group = determineGroup(e);
-                    const color = group === 'Grupo A' ? '#10b981' : group === 'Grupo B' ? '#3b82f6' : group === 'Grupo C' ? '#f59e0b' : '#ef4444';
-                    const bg = group === 'Grupo A' ? 'rgba(16,185,129,0.15)' : group === 'Grupo B' ? 'rgba(59,130,246,0.15)' : group === 'Grupo C' ? 'rgba(245,158,11,0.15)' : 'rgba(239,68,68,0.15)';
-                    return (
-                      <span key={e.id} style={{
-                        fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 6,
-                        background: bg, color
-                      }}>
-                        {e.shift}: {group.replace('Grupo ', '')}
-                      </span>
-                    );
-                  })}
-                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{athlete.name}</span>
               </div>
             );
           })}
