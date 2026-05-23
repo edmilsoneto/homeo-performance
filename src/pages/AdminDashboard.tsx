@@ -278,8 +278,8 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
                 background: '#0f1520', border: '1px solid #1e293b',
                 padding: '12px 16px', borderRadius: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center'
               }}>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{athlete.name}</span>
-                <div style={{ display: 'flex', gap: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9', marginRight: 12 }}>{athlete.name}</span>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '75%' }}>
                   {today.map(e => {
                     const group = determineGroup(e);
                     const color = group === 'Grupo A' ? '#10b981' : group === 'Grupo B' ? '#3b82f6' : group === 'Grupo C' ? '#f59e0b' : '#ef4444';
