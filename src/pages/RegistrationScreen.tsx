@@ -212,10 +212,7 @@ export const RegistrationScreen = ({ userName, todayEntries, allEntries, onSave 
             {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(score => {
               const isSelected = selectedScore === score;
               
-              let scoreColor = '#ef4444'; // Red
-              if (score >= 9) scoreColor = '#10b981'; // Green
-              else if (score >= 7) scoreColor = '#3b82f6'; // Blue
-              else if (score >= 5) scoreColor = '#f59e0b'; // Amber
+              const scoreColor = '#00a8ff'; // Premium neon blue brand color
               
               return (
                 <button
@@ -317,27 +314,7 @@ export const RegistrationScreen = ({ userName, todayEntries, allEntries, onSave 
         )}
       </div>
 
-      {/* Footer Details showing logged shifts of today */}
-      {todayEntries.length > 0 && (
-        <div style={{ width: '100%', maxWidth: 380, marginTop: 20, textAlign: 'center' }}>
-          <p style={{ fontSize: 11, color: '#475569', margin: '0 0 8px 0', textTransform: 'uppercase', letterSpacing: 1.5 }}>
-            Registrados hoje
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
-            {todayEntries.map(e => {
-              const group = determineGroup(e);
-              return (
-                <span key={e.id} style={{
-                  fontSize: 10, fontWeight: 700, padding: '4px 8px', borderRadius: 8,
-                  background: '#0a0e17', border: '1px solid #1e293b', color: GROUP_LABELS[group].color
-                }}>
-                  {e.shift}: {e.intensity > 0 ? `${e.intensity}/10` : GROUP_LABELS[group].title}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
