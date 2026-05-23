@@ -4,7 +4,7 @@ import {
   generateDailyEntropyPoints,
   downsampleToWeekly
 } from '../utils/entropy';
-import { Sun, Sunset, Moon, Sparkles, Activity, Clock, Info, Check, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Sun, Sunset, Moon, Sparkles, Activity, Clock, Info, Check, AlertTriangle, ShieldCheck, Calendar as CalendarIcon, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface Props {
@@ -13,7 +13,7 @@ interface Props {
 
 type TimeFilter = '7D' | '1M' | '6M' | '1A';
 type DashboardTab = 'charts' | 'history';
-
+type StatusFilter = 'all' | 'ruptura' | 'rigidez' | 'estavel';
 
 // Reusable premium Custom Tooltip Component for all 4 charts
 const CustomTooltip = ({ active, payload, label, deltaKey }: any) => {
@@ -57,6 +57,8 @@ const CustomTooltip = ({ active, payload, label, deltaKey }: any) => {
 export const AthleteDashboard = ({ entries }: Props) => {
   const [filter, setFilter] = useState<TimeFilter>('1M');
   const [activeTab, setActiveTab] = useState<DashboardTab>('charts');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [dateSearch, setDateSearch] = useState<string>('');
 
   // Generate all daily points (Cold start & Shannon Entropy calculations inside)
   const dailyPoints = useMemo(() => {
@@ -79,6 +81,26 @@ export const AthleteDashboard = ({ entries }: Props) => {
 
     return dailyPoints.slice(-daysToKeep);
   }, [dailyPoints, filter]);
+
+  // Combined filtering logic for Tab 2 (Chronological list with filters)
+  const processedHistoryPoints = useMemo(() => {
+    return filteredDailyPoints.filter(pt => {
+      // 1. Filter by Status Pill
+      if (statusFilter !== 'all') {
+        const delta = pt.generalDelta;
+        if (statusFilter === 'ruptura' && delta <= 15) return false;
+        if (statusFilter === 'rigidez' && delta >= -15) return false;
+        if (statusFilter === 'estavel' && (delta > 15 || delta < -15)) return false;
+      }
+
+      // 2. Filter by Date search
+      if (dateSearch) {
+        if (pt.date !== dateSearch) return false;
+      }
+
+      return true;
+    });
+  }, [filteredDailyPoints, statusFilter, dateSearch]);
 
   // Calculate top badge and diagnostic details based on today's data
   const todayDiagnostic = useMemo(() => {
@@ -147,6 +169,11 @@ export const AthleteDashboard = ({ entries }: Props) => {
     }));
   }, [filteredDailyPoints, isLongTerm]);
 
+  const handleResetFilters = () => {
+    setStatusFilter('all');
+    setDateSearch('');
+  };
+
   // Calibration/Cold-start screen
   if (isCalibrating) {
     return (
@@ -190,8 +217,10 @@ export const AthleteDashboard = ({ entries }: Props) => {
     );
   }
 
+  const latestEntropy = dailyPoints[dailyPoints.length - 1]?.generalEntropy || 0;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 24, fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 24, fontFamily: "'Inter', sans-serif" }}>
       
       {/* FILTER BUTTONS & TITLE */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
@@ -432,7 +461,7 @@ export const AthleteDashboard = ({ entries }: Props) => {
           </div>
         </div>
       ) : (
-        /* TAB 2: DETAILED HISTORY & ANOMALIES */
+        /* TAB 2: DETAILED HISTORY & ANOMALIES (CHRONOLOGICAL ORDER + CATEGORIAL & CALENDAR FILTERS) */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           
           {/* SCIENTIFIC EXPLANATORY LEGEND CARD */}
@@ -491,129 +520,274 @@ export const AthleteDashboard = ({ entries }: Props) => {
             </div>
           </div>
 
-          {/* LIST OF DAILY CARDS */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {[...filteredDailyPoints].reverse().map(pt => {
-              const delta = pt.generalDelta;
-              let label = 'Estável';
-              let color = '#10b981';
-              let bg = 'rgba(16, 185, 129, 0.06)';
-              let border = 'rgba(16, 185, 129, 0.15)';
-              let Icon = Check;
-              let diagnosis = `Variação normal de rotina (${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%). Indica adaptação saudável e consistência comportamental estável.`;
+          {/* ADVANCED FILTERING CONTROLS (PILLS + DATEPICKER CALENDAR) */}
+          <div style={{
+            background: '#0a0e17',
+            border: '1px solid #1e293b',
+            borderRadius: 20,
+            padding: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16
+          }}>
+            {/* 1. Status Filter Pills */}
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
+                Filtrar por Status de Anomalia
+              </p>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => setStatusFilter('all')}
+                  style={{
+                    padding: '8px 14px', borderRadius: 10, border: '1px solid',
+                    background: statusFilter === 'all' ? 'rgba(0,168,255,0.08)' : 'transparent',
+                    borderColor: statusFilter === 'all' ? '#00a8ff' : '#1e293b',
+                    color: statusFilter === 'all' ? '#00a8ff' : '#64748b',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  Todos os Dias
+                </button>
+                <button
+                  onClick={() => setStatusFilter('ruptura')}
+                  style={{
+                    padding: '8px 14px', borderRadius: 10, border: '1px solid',
+                    background: statusFilter === 'ruptura' ? 'rgba(239,68,68,0.08)' : 'transparent',
+                    borderColor: statusFilter === 'ruptura' ? '#ef4444' : '#1e293b',
+                    color: statusFilter === 'ruptura' ? '#ef4444' : '#64748b',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  ⚠️ Rupturas
+                </button>
+                <button
+                  onClick={() => setStatusFilter('rigidez')}
+                  style={{
+                    padding: '8px 14px', borderRadius: 10, border: '1px solid',
+                    background: statusFilter === 'rigidez' ? 'rgba(245,158,11,0.08)' : 'transparent',
+                    borderColor: statusFilter === 'rigidez' ? '#f59e0b' : '#1e293b',
+                    color: statusFilter === 'rigidez' ? '#f59e0b' : '#64748b',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  ⚠️ Rigidez
+                </button>
+                <button
+                  onClick={() => setStatusFilter('estavel')}
+                  style={{
+                    padding: '8px 14px', borderRadius: 10, border: '1px solid',
+                    background: statusFilter === 'estavel' ? 'rgba(16,185,129,0.08)' : 'transparent',
+                    borderColor: statusFilter === 'estavel' ? '#10b981' : '#1e293b',
+                    color: statusFilter === 'estavel' ? '#10b981' : '#64748b',
+                    fontSize: 12, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s'
+                  }}
+                >
+                  ✓ Estáveis
+                </button>
+              </div>
+            </div>
 
-              if (delta > 15) {
-                label = 'Ruptura (Alta Instabilidade)';
-                color = '#ef4444';
-                bg = 'rgba(239, 68, 68, 0.06)';
-                border = 'rgba(239, 68, 68, 0.15)';
-                Icon = AlertTriangle;
-                diagnosis = `Desorganização acentuada na rotina em relação ao dia anterior (+${delta.toFixed(1)}%). Alerta para picos de estresse, sono desregulado ou quebras drásticas de hábitos e horários.`;
-              } else if (delta < -15) {
-                label = 'Rigidez (Volatilidade Baixa)';
-                color = '#f59e0b';
-                bg = 'rgba(245, 158, 11, 0.06)';
-                border = 'rgba(245, 158, 11, 0.15)';
-                Icon = AlertTriangle;
-                diagnosis = `Queda acentuada na oscilação dos turnos (${delta.toFixed(1)}%). Alerta para rotinas excessivamente mecânicas, monotonia de estímulos ou início de fadiga crônica por falta de carga adaptativa.`;
-              }
-
-              // Get complete weekday name in Portuguese
-              // We create the Date object and use toLocaleDateString to extract long weekday
-              const dateObj = new Date(pt.date + 'T12:00:00');
-              const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
-              const shortDateStr = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-
-              return (
-                <div key={pt.date} style={{
-                  background: '#0a0e17',
-                  border: `1px solid ${border}`,
-                  borderRadius: 22,
-                  padding: '20px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 16,
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                  transition: 'all 0.2s'
-                }}>
-                  
-                  {/* Card Header (Date & Status) */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
-                    <div>
-                      <h4 style={{ fontSize: 16, fontWeight: 900, color: '#f1f5f9', margin: '0 0 3px 0', textTransform: 'capitalize' }}>
-                        {weekday}
-                      </h4>
-                      <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>
-                        {shortDateStr}
-                      </p>
-                    </div>
-
-                    <div style={{
+            {/* 2. Date Picker (Calendar) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', borderTop: '1px solid rgba(30,41,59,0.3)', paddingTop: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#64748b' }}>
+                <CalendarIcon style={{ width: 14, height: 14, color: '#00a8ff' }} />
+                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5 }}>Buscar Data Específica:</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input
+                  type="date"
+                  value={dateSearch}
+                  onChange={e => setDateSearch(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: 10,
+                    backgroundColor: '#000',
+                    border: '1px solid #1e293b',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontFamily: "'Inter', sans-serif",
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                />
+                {(statusFilter !== 'all' || dateSearch) && (
+                  <button
+                    onClick={handleResetFilters}
+                    style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 6,
-                      padding: '5px 12px',
+                      gap: 4,
+                      padding: '8px 12px',
                       borderRadius: 10,
-                      background: bg,
-                      border: `1px solid ${border}`,
-                      color,
+                      backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                      border: '1px solid rgba(239, 68, 68, 0.15)',
+                      color: '#ef4444',
                       fontSize: 11,
-                      fontWeight: 800,
-                      textTransform: 'uppercase',
-                      letterSpacing: 0.5
-                    }}>
-                      <Icon style={{ width: 12, height: 12 }} />
-                      {label}
-                    </div>
-                  </div>
-
-                  {/* Scientific Diagnostic text */}
-                  <p style={{
-                    fontSize: 12,
-                    color: '#94a3b8',
-                    lineHeight: 1.5,
-                    margin: 0,
-                    paddingLeft: 8,
-                    borderLeft: `2px solid ${color}`
-                  }}>
-                    {diagnosis}
-                  </p>
-
-                  {/* Individual Metrics Grid */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: 10,
-                    background: '#000',
-                    border: '1px solid #1e293b',
-                    borderRadius: 16,
-                    padding: '12px'
-                  }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                      <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Geral (Meta)</span>
-                      <span style={{ fontSize: 14, fontWeight: 900, color: '#00a8ff' }}>{pt.generalEntropy.toFixed(3)}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                      <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Manhã</span>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b' }}>{pt.morningEntropy.toFixed(3)}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                      <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Tarde</span>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#f97316' }}>{pt.afternoonEntropy.toFixed(3)}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-                      <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Noite</span>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: '#6366f1' }}>{pt.nightEntropy.toFixed(3)}</span>
-                    </div>
-                  </div>
-
-                </div>
-              );
-            })}
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <X style={{ width: 11, height: 11 }} />
+                    Limpar Filtros
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
+
+          {/* CHRONOLOGICAL LIST OF DAILY CARDS */}
+          {processedHistoryPoints.length === 0 ? (
+            <div style={{
+              textAlign: 'center', padding: '40px 20px',
+              background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 20,
+              fontFamily: "'Inter', sans-serif", display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center'
+            }}>
+              <AlertTriangle style={{ width: 28, height: 28, color: '#f59e0b' }} />
+              <div>
+                <p style={{ color: '#f1f5f9', fontSize: 14, fontWeight: 700, margin: '0 0 4px 0' }}>
+                  Nenhum registro encontrado
+                </p>
+                <p style={{ color: '#64748b', fontSize: 12, margin: 0 }}>
+                  Nenhum dia corresponde aos critérios de status e data selecionados.
+                </p>
+              </div>
+              <button
+                onClick={handleResetFilters}
+                style={{
+                  padding: '8px 16px', borderRadius: 10, background: '#00a8ff', border: 'none',
+                  color: '#000', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                  boxShadow: '0 0 15px rgba(0,168,255,0.2)'
+                }}
+              >
+                Restaurar Histórico
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Natural chronological order: Older to Newer, following weekday order! */}
+              {processedHistoryPoints.map(pt => {
+                const delta = pt.generalDelta;
+                let label = 'Estável';
+                let color = '#10b981';
+                let bg = 'rgba(16, 185, 129, 0.06)';
+                let border = 'rgba(16, 185, 129, 0.15)';
+                let Icon = Check;
+                let diagnosis = `Variação normal de rotina (${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%). Indica adaptação saudável e consistência comportamental estável.`;
+
+                if (delta > 15) {
+                  label = 'Ruptura (Alta Instabilidade)';
+                  color = '#ef4444';
+                  bg = 'rgba(239, 68, 68, 0.06)';
+                  border = 'rgba(239, 68, 68, 0.15)';
+                  Icon = AlertTriangle;
+                  diagnosis = `Desorganização acentuada na rotina em relação ao dia anterior (+${delta.toFixed(1)}%). Alerta para picos de estresse, sono desregulado ou quebras drásticas de hábitos e horários.`;
+                } else if (delta < -15) {
+                  label = 'Rigidez (Volatilidade Baixa)';
+                  color = '#f59e0b';
+                  bg = 'rgba(245, 158, 11, 0.06)';
+                  border = 'rgba(245, 158, 11, 0.15)';
+                  Icon = AlertTriangle;
+                  diagnosis = `Queda acentuada na oscilação dos turnos (${delta.toFixed(1)}%). Alerta para rotinas excessivamente mecânicas, monotonia de estímulos ou início de fadiga crônica por falta de carga adaptativa.`;
+                }
+
+                // Get complete weekday name in Portuguese
+                const dateObj = new Date(pt.date + 'T12:00:00');
+                const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+                const shortDateStr = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+                return (
+                  <div key={pt.date} style={{
+                    background: '#0a0e17',
+                    border: `1px solid ${border}`,
+                    borderRadius: 22,
+                    padding: '20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 16,
+                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                    transition: 'all 0.2s'
+                  }}>
+                    
+                    {/* Card Header (Date & Status) */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
+                      <div>
+                        <h4 style={{ fontSize: 16, fontWeight: 900, color: '#f1f5f9', margin: '0 0 3px 0', textTransform: 'capitalize' }}>
+                          {weekday}
+                        </h4>
+                        <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>
+                          {shortDateStr}
+                        </p>
+                      </div>
+
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '5px 12px',
+                        borderRadius: 10,
+                        background: bg,
+                        border: `1px solid ${border}`,
+                        color,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5
+                      }}>
+                        <Icon style={{ width: 12, height: 12 }} />
+                        {label}
+                      </div>
+                    </div>
+
+                    {/* Scientific Diagnostic text */}
+                    <p style={{
+                      fontSize: 12,
+                      color: '#94a3b8',
+                      lineHeight: 1.5,
+                      margin: 0,
+                      paddingLeft: 8,
+                      borderLeft: `2px solid ${color}`
+                    }}>
+                      {diagnosis}
+                    </p>
+
+                    {/* Individual Metrics Grid */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(4, 1fr)',
+                      gap: 10,
+                      background: '#000',
+                      border: '1px solid #1e293b',
+                      borderRadius: 16,
+                      padding: '12px'
+                    }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                        <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Geral (Meta)</span>
+                        <span style={{ fontSize: 14, fontWeight: 900, color: '#00a8ff' }}>{pt.generalEntropy.toFixed(3)}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                        <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Manhã</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b' }}>{pt.morningEntropy.toFixed(3)}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                        <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Tarde</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#f97316' }}>{pt.afternoonEntropy.toFixed(3)}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                        <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Noite</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#6366f1' }}>{pt.nightEntropy.toFixed(3)}</span>
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
     </div>
   );
 };
+export type { EntropyPoint };
