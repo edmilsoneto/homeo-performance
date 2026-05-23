@@ -1,9 +1,7 @@
-import { useState } from 'react';
 import { Layout } from './components/Layout';
 import { LoginScreen } from './pages/LoginScreen';
 import { RegistrationScreen } from './pages/RegistrationScreen';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { AthleteDashboard } from './pages/AthleteDashboard';
 import { useAppData } from './hooks/useWellbeingData';
 
 function App() {
@@ -12,8 +10,7 @@ function App() {
     getAthletes, saveEntry, getEntries, getAllEntries,
     generateMockData, clearEntries, getTodayEntries, deleteAthlete,
   } = useAppData();
-  
-  const [athleteTab, setAthleteTab] = useState<'register' | 'dashboard'>('register');
+
 
   const handleLogin = async (name: string, pin: string): Promise<boolean> => {
     return await login(name, pin);
@@ -46,30 +43,9 @@ function App() {
           padding: '16px 24px', background: '#0a0e17', borderBottom: '1px solid #1e293b',
           position: 'sticky', top: 0, zIndex: 10
         }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => setAthleteTab('register')}
-              style={{
-                background: athleteTab === 'register' ? 'rgba(0,168,255,0.1)' : 'transparent',
-                border: 'none', borderRadius: 10, padding: '8px 16px',
-                color: athleteTab === 'register' ? '#00a8ff' : '#64748b',
-                fontWeight: 700, cursor: 'pointer', fontSize: 13, transition: 'all 0.2s'
-              }}
-            >
-              Registrar Turno
-            </button>
-            <button
-              onClick={() => setAthleteTab('dashboard')}
-              style={{
-                background: athleteTab === 'dashboard' ? 'rgba(0,168,255,0.1)' : 'transparent',
-                border: 'none', borderRadius: 10, padding: '8px 16px',
-                color: athleteTab === 'dashboard' ? '#00a8ff' : '#64748b',
-                fontWeight: 700, cursor: 'pointer', fontSize: 13, transition: 'all 0.2s'
-              }}
-            >
-              Meu Painel (Sismógrafo)
-            </button>
-          </div>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#f1f5f9' }}>
+            Painel do Atleta
+          </span>
           
           <button
             onClick={logout}
@@ -84,18 +60,12 @@ function App() {
         </div>
 
         <div style={{ padding: '0 16px', maxWidth: 480, margin: '0 auto' }}>
-          {athleteTab === 'register' ? (
-            <RegistrationScreen
-              userName={user.name}
-              todayEntries={getTodayEntries(user.id)}
-              allEntries={getAllEntries(user.id)}
-              onSave={(entry) => saveEntry(user.id, entry)}
-            />
-          ) : (
-            <div style={{ paddingTop: 24 }}>
-              <AthleteDashboard entries={getAllEntries(user.id)} />
-            </div>
-          )}
+          <RegistrationScreen
+            userName={user.name}
+            todayEntries={getTodayEntries(user.id)}
+            allEntries={getAllEntries(user.id)}
+            onSave={(entry) => saveEntry(user.id, entry)}
+          />
         </div>
       </div>
     );
