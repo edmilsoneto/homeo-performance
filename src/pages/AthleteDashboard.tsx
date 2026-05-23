@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react';
 import type { ShiftEntry } from '../types';
 import {
   generateDailyEntropyPoints,
-  downsampleToWeekly
+  downsampleToWeekly,
+  type EntropyPoint
 } from '../utils/entropy';
 import { Sun, Sunset, Moon, Sparkles, Activity, Clock, Info, Check, AlertTriangle, ShieldCheck, Calendar as CalendarIcon, X } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -220,7 +221,7 @@ export const AthleteDashboard = ({ entries }: Props) => {
     );
   }
 
-  const latestEntropy = dailyPoints[dailyPoints.length - 1]?.generalEntropy || 0;
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 24, fontFamily: "'Inter', sans-serif" }}>
