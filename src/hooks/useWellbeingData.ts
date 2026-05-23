@@ -209,10 +209,11 @@ export function useAppData() {
   }, []);
 
   const generateMockData = useCallback(async (userId: string) => {
-    const mockEntries: any[] = [];
     const now = new Date();
     const shifts = ['Manhã', 'Tarde', 'Noite'];
     
+    // Build all 365 days of entries
+    const allEntries: any[] = [];
     for (let i = 364; i >= 0; i--) {
       const d = new Date(now);
       d.setDate(d.getDate() - i);
@@ -221,61 +222,56 @@ export function useAppData() {
       
       let pList: string[] = [];
       if ((dayIndex % 30 >= 12 && dayIndex % 30 <= 18)) {
-        // High volatility periods (spikes) periodically every 30 days
         pList = ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D'];
       } else if (dayIndex % 30 >= 19 && dayIndex % 30 <= 25) {
-        // Recovery periods
         pList = ['Grupo A', 'Grupo B', 'Grupo B', 'Grupo C', 'Grupo C'];
       } else {
-        // Stable routine periods
         pList = ['Grupo A', 'Grupo A', 'Grupo B', 'Grupo B', 'Grupo B'];
       }
 
       shifts.forEach((shift, sIdx) => {
         const randomGroup = pList[Math.floor(Math.random() * pList.length)];
         const timestamp = new Date(dateStr + 'T12:00:00').getTime() + (sIdx * 1000 * 3600 * 4);
-        
-        mockEntries.push({
-          userId,
-          date: dateStr,
-          shift,
-          feedback: randomGroup,
-          intensity: 0,
-          timestamp
-        });
+        allEntries.push({ userId, date: dateStr, shift, feedback: randomGroup, intensity: 0, timestamp });
       });
     }
 
+    // Send in batches of 90 entries (30 days × 3 shifts) to avoid Vercel limits
+    const BATCH_SIZE = 90;
+    const allInserted: any[] = [];
+
     try {
-      const res = await fetch('/api/entries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(mockEntries)
-      });
-      if (res.ok) {
-        const result = await res.json();
-        const mappedEntries = result.inserted.map((e: any) => ({
-          id: e.id,
-          date: e.date,
-          shift: e.shift,
-          intensity: e.intensity,
-          feedback: e.feedback,
-          timestamp: Number(e.timestamp)
-        }));
-        
-        setData(prev => {
-          return {
-            ...prev,
-            entries: {
-              ...prev.entries,
-              [userId]: mappedEntries
-            }
-          };
+      for (let start = 0; start < allEntries.length; start += BATCH_SIZE) {
+        const batch = allEntries.slice(start, start + BATCH_SIZE);
+        const res = await fetch('/api/entries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(batch)
         });
-        alert('1 ano de dados de calibração gerados com sucesso!');
-      } else {
-        alert('Erro ao gerar dados sintéticos.');
+        if (!res.ok) {
+          const errText = await res.text();
+          console.error('Batch failed:', errText);
+          alert('Erro ao gerar dados sintéticos.');
+          return;
+        }
+        const result = await res.json();
+        allInserted.push(...result.inserted);
       }
+
+      const mappedEntries = allInserted.map((e: any) => ({
+        id: e.id,
+        date: e.date,
+        shift: e.shift,
+        intensity: e.intensity,
+        feedback: e.feedback,
+        timestamp: Number(e.timestamp)
+      }));
+      
+      setData(prev => ({
+        ...prev,
+        entries: { ...prev.entries, [userId]: mappedEntries }
+      }));
+      alert('1 ano de dados de calibração gerados com sucesso!');
     } catch (err) {
       console.error(err);
       alert('Erro de conexão ao gerar dados.');
