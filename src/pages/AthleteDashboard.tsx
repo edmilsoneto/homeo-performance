@@ -133,6 +133,9 @@ export const AthleteDashboard = ({ entries }: Props) => {
 
     return {
       value: todayPt.generalEntropy,
+      morningEntropy: todayPt.morningEntropy,
+      afternoonEntropy: todayPt.afternoonEntropy,
+      nightEntropy: todayPt.nightEntropy,
       delta,
       deltaText: delta > 0 ? `+${delta}%` : `${delta}%`,
       label,
@@ -305,6 +308,81 @@ export const AthleteDashboard = ({ entries }: Props) => {
               <p style={{ fontSize: 12, color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
                 {todayDiagnostic.desc}
               </p>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div style={{ height: '1px', background: 'rgba(30,41,59,0.3)', width: '100%' }} />
+
+          {/* Entropias por Turno de Hoje */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <p style={{ fontSize: 10, fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1.5, margin: 0 }}>
+              Detalhamento de Hoje por Turno
+            </p>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: 10,
+            }}>
+              {/* Manhã */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.2)',
+                border: '1px solid #1e293b',
+                borderRadius: 14,
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Sun style={{ width: 12, height: 12, color: '#f59e0b' }} />
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Manhã</span>
+                </div>
+                <span style={{ fontSize: 16, fontWeight: 900, color: '#f59e0b', textShadow: '0 0 10px rgba(245,158,11,0.1)' }}>
+                  {todayDiagnostic.morningEntropy.toFixed(3)}
+                </span>
+              </div>
+
+              {/* Tarde */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.2)',
+                border: '1px solid #1e293b',
+                borderRadius: 14,
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Sunset style={{ width: 12, height: 12, color: '#f97316' }} />
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Tarde</span>
+                </div>
+                <span style={{ fontSize: 16, fontWeight: 900, color: '#f97316', textShadow: '0 0 10px rgba(249,115,22,0.1)' }}>
+                  {todayDiagnostic.afternoonEntropy.toFixed(3)}
+                </span>
+              </div>
+
+              {/* Noite */}
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.2)',
+                border: '1px solid #1e293b',
+                borderRadius: 14,
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 4
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Moon style={{ width: 12, height: 12, color: '#6366f1' }} />
+                  <span style={{ fontSize: 9, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Noite</span>
+                </div>
+                <span style={{ fontSize: 16, fontWeight: 900, color: '#6366f1', textShadow: '0 0 10px rgba(99,102,241,0.1)' }}>
+                  {todayDiagnostic.nightEntropy.toFixed(3)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
