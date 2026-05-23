@@ -51,17 +51,6 @@ export const calculateShannonEntropy = (groups: GroupType[]): number => {
 };
 
 /**
- * Gets rolling entropy up to a target date.
- * General: last 21 registered shifts.
- */
-export const calculateRollingGeneralEntropy = (entriesUpToDate: ShiftEntry[]): number => {
-  const sorted = [...entriesUpToDate].sort((a, b) => a.timestamp - b.timestamp);
-  const last21 = sorted.slice(-21);
-  const groups = last21.map(determineGroup);
-  return calculateShannonEntropy(groups);
-};
-
-/**
  * Gets rolling entropy for a specific shift up to a target date.
  * Shift specific: last 7 registered shifts for that shift.
  */
@@ -71,6 +60,33 @@ export const calculateRollingShiftEntropy = (entriesUpToDate: ShiftEntry[], shif
   const last7 = sorted.slice(-7);
   const groups = last7.map(determineGroup);
   return calculateShannonEntropy(groups);
+};
+
+/**
+ * Calculates Rolling General Entropy (Meta-Entropy of shift entropies)
+ * Formula: Shannon Entropy of the Morning, Afternoon, and Night entropies.
+ * Maximum value is log2(3) = 1.585
+ */
+export const calculateRollingGeneralEntropy = (entriesUpToDate: ShiftEntry[]): number => {
+  const morning = calculateRollingShiftEntropy(entriesUpToDate, 'Manhã');
+  const afternoon = calculateRollingShiftEntropy(entriesUpToDate, 'Tarde');
+  const night = calculateRollingShiftEntropy(entriesUpToDate, 'Noite');
+
+  const sum = morning + afternoon + night;
+  if (sum === 0) return 0;
+
+  const pm = morning / sum;
+  const pt = afternoon / sum;
+  const pn = night / sum;
+
+  let metaEntropy = 0;
+  [pm, pt, pn].forEach(p => {
+    if (p > 0) {
+      metaEntropy -= p * Math.log2(p);
+    }
+  });
+
+  return Number(metaEntropy.toFixed(3));
 };
 
 /**
@@ -91,6 +107,11 @@ export interface EntropyPoint {
   afternoonEntropy: number;
   nightEntropy: number;
   rawShiftsCount: number;
+  // Delta % compared to yesterday
+  generalDelta: number;
+  morningDelta: number;
+  afternoonDelta: number;
+  nightDelta: number;
 }
 
 /**
@@ -110,7 +131,6 @@ export const generateDailyEntropyPoints = (allEntries: ShiftEntry[]): EntropyPoi
 
   uniqueDates.forEach(date => {
     // Get all entries registered up to (and including) this date
-    // We can filter by date string lexicographically because dates are YYYY-MM-DD
     const entriesUpToDate = sortedEntries.filter(e => e.date <= date);
 
     const totalShiftsCount = entriesUpToDate.length;
@@ -135,18 +155,46 @@ export const generateDailyEntropyPoints = (allEntries: ShiftEntry[]): EntropyPoi
       morningEntropy: morning,
       afternoonEntropy: afternoon,
       nightEntropy: night,
-      rawShiftsCount: totalShiftsCount
+      rawShiftsCount: totalShiftsCount,
+      generalDelta: 0,
+      morningDelta: 0,
+      afternoonDelta: 0,
+      nightDelta: 0
     });
   });
 
+  // Calculate delta percentages point-to-point (Today vs Yesterday)
+  for (let i = 0; i < points.length; i++) {
+    const today = points[i];
+    if (i > 0) {
+      const yesterday = points[i - 1];
+      today.generalDelta = calculateDeltaPercentage(today.generalEntropy, yesterday.generalEntropy);
+      today.morningDelta = calculateDeltaPercentage(today.morningEntropy, yesterday.morningEntropy);
+      today.afternoonDelta = calculateDeltaPercentage(today.afternoonEntropy, yesterday.afternoonEntropy);
+      today.nightDelta = calculateDeltaPercentage(today.nightEntropy, yesterday.nightEntropy);
+    }
+  }
+
   return points;
 };
+
+export interface WeeklyEntropyPoint {
+  name: string;
+  general: number;
+  morning: number;
+  afternoon: number;
+  night: number;
+  generalDelta: number;
+  morningDelta: number;
+  afternoonDelta: number;
+  nightDelta: number;
+}
 
 /**
  * Downsamples daily points to weekly points (averaging the entropy values)
  * to avoid cluttering in large range views (6M and 1A).
  */
-export const downsampleToWeekly = (points: EntropyPoint[]): { name: string; general: number; morning: number; afternoon: number; night: number }[] => {
+export const downsampleToWeekly = (points: EntropyPoint[]): WeeklyEntropyPoint[] => {
   if (points.length === 0) return [];
 
   const weeklyGroups: EntropyPoint[][] = [];
@@ -161,22 +209,39 @@ export const downsampleToWeekly = (points: EntropyPoint[]): { name: string; gene
     }
   });
 
-  return weeklyGroups.map((weekPts, index) => {
+  const weeklyPoints: WeeklyEntropyPoint[] = weeklyGroups.map((weekPts, index) => {
     const avgGeneral = weekPts.reduce((sum, p) => sum + p.generalEntropy, 0) / weekPts.length;
     const avgMorning = weekPts.reduce((sum, p) => sum + p.morningEntropy, 0) / weekPts.length;
     const avgAfternoon = weekPts.reduce((sum, p) => sum + p.afternoonEntropy, 0) / weekPts.length;
     const avgNight = weekPts.reduce((sum, p) => sum + p.nightEntropy, 0) / weekPts.length;
 
-    // Use date range as label (e.g. "Sem. 1" or date limits)
     const firstPt = weekPts[0];
     const lastPt = weekPts[weekPts.length - 1];
 
     return {
       name: `S${index + 1} (${firstPt.label}-${lastPt.label})`,
-      general: Number(avgGeneral.toFixed(2)),
-      morning: Number(avgMorning.toFixed(2)),
-      afternoon: Number(avgAfternoon.toFixed(2)),
-      night: Number(avgNight.toFixed(2))
+      general: Number(avgGeneral.toFixed(3)),
+      morning: Number(avgMorning.toFixed(3)),
+      afternoon: Number(avgAfternoon.toFixed(3)),
+      night: Number(avgNight.toFixed(3)),
+      generalDelta: 0,
+      morningDelta: 0,
+      afternoonDelta: 0,
+      nightDelta: 0
     };
   });
+
+  // Calculate delta percentages week-to-week
+  for (let i = 0; i < weeklyPoints.length; i++) {
+    const today = weeklyPoints[i];
+    if (i > 0) {
+      const yesterday = weeklyPoints[i - 1];
+      today.generalDelta = calculateDeltaPercentage(today.general, yesterday.general);
+      today.morningDelta = calculateDeltaPercentage(today.morning, yesterday.morning);
+      today.afternoonDelta = calculateDeltaPercentage(today.afternoon, yesterday.afternoon);
+      today.nightDelta = calculateDeltaPercentage(today.night, yesterday.night);
+    }
+  }
+
+  return weeklyPoints;
 };
