@@ -2,10 +2,9 @@ import { useState, useMemo } from 'react';
 import type { ShiftEntry } from '../types';
 import {
   generateDailyEntropyPoints,
-  downsampleToWeekly,
-  type EntropyPoint
+  downsampleToWeekly
 } from '../utils/entropy';
-import { Sun, Sunset, Moon, Sparkles, Activity, Clock } from 'lucide-react';
+import { Sun, Sunset, Moon, Sparkles, Activity, Clock, Info, Check, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 interface Props {
@@ -13,6 +12,8 @@ interface Props {
 }
 
 type TimeFilter = '7D' | '1M' | '6M' | '1A';
+type DashboardTab = 'charts' | 'history';
+
 
 // Reusable premium Custom Tooltip Component for all 4 charts
 const CustomTooltip = ({ active, payload, label, deltaKey }: any) => {
@@ -55,6 +56,7 @@ const CustomTooltip = ({ active, payload, label, deltaKey }: any) => {
 
 export const AthleteDashboard = ({ entries }: Props) => {
   const [filter, setFilter] = useState<TimeFilter>('1M');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('charts');
 
   // Generate all daily points (Cold start & Shannon Entropy calculations inside)
   const dailyPoints = useMemo(() => {
@@ -78,15 +80,45 @@ export const AthleteDashboard = ({ entries }: Props) => {
     return dailyPoints.slice(-daysToKeep);
   }, [dailyPoints, filter]);
 
-  // Calculate top badge variation Δ% (Today vs Yesterday)
-  const deltaInfo = useMemo(() => {
-    if (dailyPoints.length < 2) return { value: 0, text: 'Sem dados suficientes' };
-
+  // Calculate top badge and diagnostic details based on today's data
+  const todayDiagnostic = useMemo(() => {
+    if (dailyPoints.length === 0) return null;
     const todayPt = dailyPoints[dailyPoints.length - 1];
+    
+    const delta = todayPt.generalDelta;
+    let label = 'Estável';
+    let desc = 'Rotina consistente com o padrão adaptativo normal.';
+    let color = '#10b981'; // Green
+    let bg = 'rgba(16, 185, 129, 0.08)';
+    let border = 'rgba(16, 185, 129, 0.2)';
+    let Icon = ShieldCheck;
+
+    if (delta > 15) {
+      label = 'Ruptura (Alta Instabilidade)';
+      desc = `Desorganização acentuada na rotina em relação a ontem (+${delta}%). Alerta de pico de estresse, sono desregulado ou quebras drásticas de hábitos.`;
+      color = '#ef4444'; // Red
+      bg = 'rgba(239, 68, 68, 0.08)';
+      border = 'rgba(239, 68, 68, 0.2)';
+      Icon = AlertTriangle;
+    } else if (delta < -15) {
+      label = 'Rigidez (Volatilidade Baixa)';
+      desc = `Queda acentuada de variação em relação a ontem (${delta}%). Alerta para rotinas excessivamente monótonas ou início de quadro de fadiga crônica por monotonia.`;
+      color = '#f59e0b'; // Amber
+      bg = 'rgba(245, 158, 11, 0.08)';
+      border = 'rgba(245, 158, 11, 0.2)';
+      Icon = AlertTriangle;
+    }
 
     return {
-      value: todayPt.generalDelta,
-      text: todayPt.generalDelta > 0 ? `+${todayPt.generalDelta}%` : `${todayPt.generalDelta}%`
+      value: todayPt.generalEntropy,
+      delta,
+      deltaText: delta > 0 ? `+${delta}%` : `${delta}%`,
+      label,
+      desc,
+      color,
+      bg,
+      border,
+      Icon
     };
   }, [dailyPoints]);
 
@@ -158,16 +190,14 @@ export const AthleteDashboard = ({ entries }: Props) => {
     );
   }
 
-  const latestEntropy = dailyPoints[dailyPoints.length - 1]?.generalEntropy || 0;
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, paddingBottom: 24, fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, paddingBottom: 24, fontFamily: "'Inter', sans-serif" }}>
       
       {/* FILTER BUTTONS & TITLE */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h2 style={{ fontSize: 18, fontWeight: 800, color: '#f1f5f9', margin: '0 0 4px 0' }}>Sismógrafo Analítico</h2>
-          <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Análise de desvio rotineiro ponto a ponto via Entropia de Shannon</p>
+          <p style={{ fontSize: 12, color: '#64748b', margin: 0 }}>Análise avançada da variação de rotina por Entropia de Shannon</p>
         </div>
         <div style={{ display: 'flex', gap: 4, background: '#0a0e17', border: '1px solid #1e293b', padding: 4, borderRadius: 12 }}>
           {(['7D', '1M', '6M', '1A'] as TimeFilter[]).map(f => (
@@ -187,241 +217,403 @@ export const AthleteDashboard = ({ entries }: Props) => {
         </div>
       </div>
 
-      {/* METRIC HEADER CARD */}
-      <div style={{
-        borderRadius: 24, padding: '20px 24px', position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(135deg, rgba(0,168,255,0.05), #000)',
-        border: '1px solid rgba(0,168,255,0.15)',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-      }}>
-        <div>
-          <p style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 }}>
-            Meta-Entropia Geral de Hoje (Balanço dos Turnos)
-          </p>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-            <span style={{
-              fontSize: 48, fontWeight: 900, color: '#00a8ff',
-              textShadow: '0 0 20px rgba(0,168,255,0.3)'
-            }}>
-              {latestEntropy.toFixed(3)}
-            </span>
-            <span style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>/ 1.585 max</span>
-          </div>
-          <p style={{ fontSize: 12, color: '#64748b', marginTop: 6, margin: '6px 0 0 0' }}>
-            Calculada a partir das entropias individuais de cada turno.
-          </p>
-        </div>
-
-        {/* Dynamic Delta% Badge */}
-        {dailyPoints.length >= 2 && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-            <span style={{ fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Variação Diária
-            </span>
-            <div style={{
-              padding: '6px 12px', borderRadius: 12, fontSize: 14, fontWeight: 800,
-              background: deltaInfo.value === 0 
-                ? 'rgba(71,85,105,0.1)' 
-                : deltaInfo.value > 0 
-                  ? 'rgba(239,68,68,0.08)' 
-                  : 'rgba(16,185,129,0.08)',
-              border: `1px solid ${
-                deltaInfo.value === 0 
-                  ? 'rgba(71,85,105,0.2)' 
-                  : deltaInfo.value > 0 
-                    ? 'rgba(239,68,68,0.2)' 
-                    : 'rgba(16,185,129,0.2)'
-              }`,
-              color: deltaInfo.value === 0 
-                ? '#94a3b8' 
-                : deltaInfo.value > 0 
-                  ? '#ef4444' 
-                  : '#10b981',
-              boxShadow: deltaInfo.value === 0 
-                ? 'none' 
-                : `0 0 15px ${deltaInfo.value > 0 ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)'}`
-            }}>
-              {deltaInfo.text}
+      {/* METRIC HEADER CARD (DIAGNOSTICS & DETAILS INSTANTANEO) */}
+      {todayDiagnostic && (
+        <div style={{
+          borderRadius: 24, padding: '24px', position: 'relative', overflow: 'hidden',
+          background: 'linear-gradient(135deg, rgba(0,168,255,0.05), #000)',
+          border: '1px solid rgba(0,168,255,0.15)',
+          display: 'flex', flexDirection: 'column', gap: 16
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <p style={{ fontSize: 10, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 8 }}>
+                Meta-Entropia Geral de Hoje (Balanço dos Turnos)
+              </p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{
+                  fontSize: 48, fontWeight: 900, color: '#00a8ff',
+                  textShadow: '0 0 20px rgba(0,168,255,0.3)'
+                }}>
+                  {todayDiagnostic.value.toFixed(3)}
+                </span>
+                <span style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>/ 1.585 max</span>
+              </div>
             </div>
-            <span style={{ fontSize: 10, color: '#475569' }}>vs ontem</span>
+
+            {/* Delta% Badge */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <span style={{ fontSize: 10, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+                Variação Diária
+              </span>
+              <div style={{
+                padding: '6px 12px', borderRadius: 12, fontSize: 14, fontWeight: 800,
+                background: todayDiagnostic.bg,
+                border: `1px solid ${todayDiagnostic.border}`,
+                color: todayDiagnostic.color,
+                boxShadow: `0 0 15px ${todayDiagnostic.border}`
+              }}>
+                {todayDiagnostic.deltaText}
+              </div>
+            </div>
           </div>
-        )}
+
+          {/* Detailed Instant Diagnosis Panel */}
+          <div style={{
+            background: todayDiagnostic.bg,
+            border: `1px solid ${todayDiagnostic.border}`,
+            borderRadius: 16,
+            padding: '16px',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 12
+          }}>
+            <todayDiagnostic.Icon style={{ width: 20, height: 20, color: todayDiagnostic.color, flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <h4 style={{ fontSize: 13, fontWeight: 800, color: todayDiagnostic.color, margin: '0 0 4px 0' }}>
+                Status: {todayDiagnostic.label}
+              </h4>
+              <p style={{ fontSize: 12, color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
+                {todayDiagnostic.desc}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DASHBOARD TAB SELECTOR */}
+      <div style={{ display: 'flex', gap: 8, background: '#0a0e17', border: '1px solid #1e293b', padding: 6, borderRadius: 16 }}>
+        <button
+          onClick={() => setActiveTab('charts')}
+          style={{
+            flex: 1, padding: '10px', borderRadius: 12, border: 'none',
+            background: activeTab === 'charts' ? 'rgba(0,168,255,0.1)' : 'transparent',
+            color: activeTab === 'charts' ? '#00a8ff' : '#64748b',
+            fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+          }}
+        >
+          <Activity style={{ width: 15, height: 15 }} />
+          Gráficos Analíticos
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          style={{
+            flex: 1, padding: '10px', borderRadius: 12, border: 'none',
+            background: activeTab === 'history' ? 'rgba(0,168,255,0.1)' : 'transparent',
+            color: activeTab === 'history' ? '#00a8ff' : '#64748b',
+            fontSize: 13, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6
+          }}
+        >
+          <Clock style={{ width: 15, height: 15 }} />
+          Histórico e Anomalias
+        </button>
       </div>
 
-      {/* 2X2 DASHBOARD GRID (4 LARGE LINE CHARTS) */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-        gap: 20
-      }}>
-        {/* CHART 1: Meta-Entropy (Geral) */}
-        <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 24, padding: '20px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, paddingLeft: 8 }}>
-            <Activity style={{ width: 14, height: 14, color: '#00a8ff' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: 1.5 }}>
-              1. Meta-Entropia Geral {isLongTerm ? '(Semanal)' : '(Diário)'}
-            </span>
+      {/* TAB CONTENTS */}
+      {activeTab === 'charts' ? (
+        /* TAB 1: CHARTS GRID 2x2 */
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: 20
+        }}>
+          {/* CHART 1: Meta-Entropy */}
+          <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 24, padding: '20px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, paddingLeft: 8 }}>
+              <Activity style={{ width: 14, height: 14, color: '#00a8ff' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: 1.5 }}>
+                1. Meta-Entropia Geral {isLongTerm ? '(Semanal)' : '(Diário)'}
+              </span>
+            </div>
+            <div style={{ height: 160, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#334155" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} minTickGap={20} />
+                  <YAxis stroke="#334155" fontSize={9} tickLine={false} axisLine={false} domain={[0, 1.6]} tick={{ fill: '#64748b' }} tickFormatter={(v: number) => v.toFixed(1)} />
+                  <Tooltip content={<CustomTooltip deltaKey="generalDelta" />} />
+                  <Line
+                    type="monotone"
+                    dataKey="general"
+                    stroke="#00a8ff"
+                    strokeWidth={2.5}
+                    dot={chartData.length <= 31 ? { r: 2, fill: '#000', stroke: '#00a8ff', strokeWidth: 2 } : false}
+                    activeDot={{ r: 5, fill: '#00a8ff', stroke: '#000', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div style={{ height: 160, width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke="#334155" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} minTickGap={20} />
-                <YAxis stroke="#334155" fontSize={9} tickLine={false} axisLine={false} domain={[0, 1.6]} tick={{ fill: '#64748b' }} tickFormatter={(v: number) => v.toFixed(1)} />
-                <Tooltip content={<CustomTooltip dataKey="general" deltaKey="generalDelta" />} />
-                <Line
-                  type="monotone"
-                  dataKey="general"
-                  stroke="#00a8ff"
-                  strokeWidth={2.5}
-                  dot={chartData.length <= 31 ? { r: 2, fill: '#000', stroke: '#00a8ff', strokeWidth: 2 } : false}
-                  activeDot={{ r: 5, fill: '#00a8ff', stroke: '#000', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        {/* CHART 2: Morning Entropy */}
-        <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 24, padding: '20px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, paddingLeft: 8 }}>
-            <Sun style={{ width: 14, height: 14, color: '#f59e0b' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: 1.5 }}>
-              2. Entropia da Manhã {isLongTerm ? '(Semanal)' : '(Diário)'}
-            </span>
+          {/* CHART 2: Morning Entropy */}
+          <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 24, padding: '20px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, paddingLeft: 8 }}>
+              <Sun style={{ width: 14, height: 14, color: '#f59e0b' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: 1.5 }}>
+                2. Entropia da Manhã {isLongTerm ? '(Semanal)' : '(Diário)'}
+              </span>
+            </div>
+            <div style={{ height: 160, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#334155" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} minTickGap={20} />
+                  <YAxis stroke="#334155" fontSize={9} tickLine={false} axisLine={false} domain={[0, 2]} tick={{ fill: '#64748b' }} tickFormatter={(v: number) => v.toFixed(1)} />
+                  <Tooltip content={<CustomTooltip deltaKey="morningDelta" />} />
+                  <Line
+                    type="monotone"
+                    dataKey="morning"
+                    stroke="#f59e0b"
+                    strokeWidth={2.5}
+                    dot={chartData.length <= 31 ? { r: 2, fill: '#000', stroke: '#f59e0b', strokeWidth: 2 } : false}
+                    activeDot={{ r: 5, fill: '#f59e0b', stroke: '#000', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div style={{ height: 160, width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke="#334155" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} minTickGap={20} />
-                <YAxis stroke="#334155" fontSize={9} tickLine={false} axisLine={false} domain={[0, 2]} tick={{ fill: '#64748b' }} tickFormatter={(v: number) => v.toFixed(1)} />
-                <Tooltip content={<CustomTooltip dataKey="morning" deltaKey="morningDelta" />} />
-                <Line
-                  type="monotone"
-                  dataKey="morning"
-                  stroke="#f59e0b"
-                  strokeWidth={2.5}
-                  dot={chartData.length <= 31 ? { r: 2, fill: '#000', stroke: '#f59e0b', strokeWidth: 2 } : false}
-                  activeDot={{ r: 5, fill: '#f59e0b', stroke: '#000', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        {/* CHART 3: Afternoon Entropy */}
-        <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 24, padding: '20px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, paddingLeft: 8 }}>
-            <Sunset style={{ width: 14, height: 14, color: '#f97316' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: 1.5 }}>
-              3. Entropia da Tarde {isLongTerm ? '(Semanal)' : '(Diário)'}
-            </span>
+          {/* CHART 3: Afternoon Entropy */}
+          <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 24, padding: '20px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, paddingLeft: 8 }}>
+              <Sunset style={{ width: 14, height: 14, color: '#f97316' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: 1.5 }}>
+                3. Entropia da Tarde {isLongTerm ? '(Semanal)' : '(Diário)'}
+              </span>
+            </div>
+            <div style={{ height: 160, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#334155" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} minTickGap={20} />
+                  <YAxis stroke="#334155" fontSize={9} tickLine={false} axisLine={false} domain={[0, 2]} tick={{ fill: '#64748b' }} tickFormatter={(v: number) => v.toFixed(1)} />
+                  <Tooltip content={<CustomTooltip deltaKey="afternoonDelta" />} />
+                  <Line
+                    type="monotone"
+                    dataKey="afternoon"
+                    stroke="#f97316"
+                    strokeWidth={2.5}
+                    dot={chartData.length <= 31 ? { r: 2, fill: '#000', stroke: '#f97316', strokeWidth: 2 } : false}
+                    activeDot={{ r: 5, fill: '#f97316', stroke: '#000', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-          <div style={{ height: 160, width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke="#334155" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} minTickGap={20} />
-                <YAxis stroke="#334155" fontSize={9} tickLine={false} axisLine={false} domain={[0, 2]} tick={{ fill: '#64748b' }} tickFormatter={(v: number) => v.toFixed(1)} />
-                <Tooltip content={<CustomTooltip dataKey="afternoon" deltaKey="afternoonDelta" />} />
-                <Line
-                  type="monotone"
-                  dataKey="afternoon"
-                  stroke="#f97316"
-                  strokeWidth={2.5}
-                  dot={chartData.length <= 31 ? { r: 2, fill: '#000', stroke: '#f97316', strokeWidth: 2 } : false}
-                  activeDot={{ r: 5, fill: '#f97316', stroke: '#000', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        {/* CHART 4: Night Entropy */}
-        <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 24, padding: '20px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, paddingLeft: 8 }}>
-            <Moon style={{ width: 14, height: 14, color: '#6366f1' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: 1.5 }}>
-              4. Entropia da Noite {isLongTerm ? '(Semanal)' : '(Diário)'}
-            </span>
-          </div>
-          <div style={{ height: 160, width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" stroke="#334155" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} minTickGap={20} />
-                <YAxis stroke="#334155" fontSize={9} tickLine={false} axisLine={false} domain={[0, 2]} tick={{ fill: '#64748b' }} tickFormatter={(v: number) => v.toFixed(1)} />
-                <Tooltip content={<CustomTooltip dataKey="night" deltaKey="nightDelta" />} />
-                <Line
-                  type="monotone"
-                  dataKey="night"
-                  stroke="#6366f1"
-                  strokeWidth={2.5}
-                  dot={chartData.length <= 31 ? { r: 2, fill: '#000', stroke: '#6366f1', strokeWidth: 2 } : false}
-                  activeDot={{ r: 5, fill: '#6366f1', stroke: '#000', strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          {/* CHART 4: Night Entropy */}
+          <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 24, padding: '20px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, paddingLeft: 8 }}>
+              <Moon style={{ width: 14, height: 14, color: '#6366f1' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#e2e8f0', textTransform: 'uppercase', letterSpacing: 1.5 }}>
+                4. Entropia da Noite {isLongTerm ? '(Semanal)' : '(Diário)'}
+              </span>
+            </div>
+            <div style={{ height: 160, width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="#334155" fontSize={9} tickLine={false} axisLine={false} tick={{ fill: '#64748b' }} minTickGap={20} />
+                  <YAxis stroke="#334155" fontSize={9} tickLine={false} axisLine={false} domain={[0, 2]} tick={{ fill: '#64748b' }} tickFormatter={(v: number) => v.toFixed(1)} />
+                  <Tooltip content={<CustomTooltip deltaKey="nightDelta" />} />
+                  <Line
+                    type="monotone"
+                    dataKey="night"
+                    stroke="#6366f1"
+                    strokeWidth={2.5}
+                    dot={chartData.length <= 31 ? { r: 2, fill: '#000', stroke: '#6366f1', strokeWidth: 2 } : false}
+                    activeDot={{ r: 5, fill: '#6366f1', stroke: '#000', strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* TAB 2: DETAILED HISTORY & ANOMALIES */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          
+          {/* SCIENTIFIC EXPLANATORY LEGEND CARD */}
+          <div style={{
+            background: 'rgba(255,255,255,0.02)',
+            border: '1px solid #1e293b',
+            borderRadius: 20,
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #1e293b', paddingBottom: 10 }}>
+              <Info style={{ width: 16, height: 16, color: '#00a8ff' }} />
+              <h4 style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9', margin: 0, textTransform: 'uppercase', letterSpacing: 1.5 }}>
+                Legenda Científica do Painel de Anomalias
+              </h4>
+            </div>
 
-      {/* FULL DETAILED AUDITABLE DAILY HISTORY TABLE */}
-      <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 24, padding: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-          <Clock style={{ width: 14, height: 14, color: '#00a8ff' }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#f1f5f9', textTransform: 'uppercase', letterSpacing: 1.5 }}>
-            Detalhamento Diário Auditável (Histórico Completo)
-          </span>
-        </div>
-        
-        <div style={{ overflowX: 'auto', maxHeight: 350, border: '1px solid #1e293b', borderRadius: 16 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
-            <thead style={{ position: 'sticky', top: 0, background: '#0a0e17', zIndex: 2 }}>
-              <tr style={{ borderBottom: '2px solid #1e293b' }}>
-                <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, fontSize: 11 }}>Dia</th>
-                <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, fontSize: 11 }}>Meta-Entropia Geral</th>
-                <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, fontSize: 11 }}>Variação (Δ%)</th>
-                <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, fontSize: 11 }}>Manhã</th>
-                <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, fontSize: 11 }}>Tarde</th>
-                <th style={{ padding: '12px 16px', color: '#64748b', fontWeight: 600, fontSize: 11 }}>Noite</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...filteredDailyPoints].reverse().map((pt, idx) => {
-                const isStable = pt.generalDelta === 0;
-                const isRupture = pt.generalDelta > 0;
-                
-                return (
-                  <tr key={pt.date} style={{ 
-                    borderBottom: '1px solid rgba(30,41,59,0.5)',
-                    background: idx % 2 === 0 ? 'rgba(255,255,255,0.01)' : 'transparent'
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 12, lineHeight: 1.5, color: '#94a3b8' }}>
+              <p style={{ margin: 0 }}>
+                O painel de anomalias analisa a <strong>oscilação diária (Meta-Entropia Geral)</strong> para detectar quebras abruptas na consistência de hábitos do atleta.
+              </p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginTop: 4 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontWeight: 800, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
+                    ⚠️ Ruptura (&gt; +15%)
+                  </span>
+                  <span style={{ color: '#64748b' }}>
+                    Ocorre quando há um pico súbito de entropia. Indica desorganização expressiva, quebra de rotina, variações drásticas nos turnos ou pico de estresse comportamental.
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
+                    ⚠️ Rigidez (&lt; -15%)
+                  </span>
+                  <span style={{ color: '#64748b' }}>
+                    Ocorre quando a entropia despenca. Indica rotina puramente mecânica, monotonia excessiva ou início de quadro de fadiga (monotonia biológica prejudicial à adaptação).
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontWeight: 800, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
+                    ✓ Estável (Dentro de ±15%)
+                  </span>
+                  <span style={{ color: '#64748b' }}>
+                    Oscilação dentro dos limites fisiológicos normais. Representa consistência comportamental saudável e hábitos adaptativos estáveis.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* LIST OF DAILY CARDS */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {[...filteredDailyPoints].reverse().map(pt => {
+              const delta = pt.generalDelta;
+              let label = 'Estável';
+              let color = '#10b981';
+              let bg = 'rgba(16, 185, 129, 0.06)';
+              let border = 'rgba(16, 185, 129, 0.15)';
+              let Icon = Check;
+              let diagnosis = `Variação normal de rotina (${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%). Indica adaptação saudável e consistência comportamental estável.`;
+
+              if (delta > 15) {
+                label = 'Ruptura (Alta Instabilidade)';
+                color = '#ef4444';
+                bg = 'rgba(239, 68, 68, 0.06)';
+                border = 'rgba(239, 68, 68, 0.15)';
+                Icon = AlertTriangle;
+                diagnosis = `Desorganização acentuada na rotina em relação ao dia anterior (+${delta.toFixed(1)}%). Alerta para picos de estresse, sono desregulado ou quebras drásticas de hábitos e horários.`;
+              } else if (delta < -15) {
+                label = 'Rigidez (Volatilidade Baixa)';
+                color = '#f59e0b';
+                bg = 'rgba(245, 158, 11, 0.06)';
+                border = 'rgba(245, 158, 11, 0.15)';
+                Icon = AlertTriangle;
+                diagnosis = `Queda acentuada na oscilação dos turnos (${delta.toFixed(1)}%). Alerta para rotinas excessivamente mecânicas, monotonia de estímulos ou início de fadiga crônica por falta de carga adaptativa.`;
+              }
+
+              // Get complete weekday name in Portuguese
+              // We create the Date object and use toLocaleDateString to extract long weekday
+              const dateObj = new Date(pt.date + 'T12:00:00');
+              const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+              const shortDateStr = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+              return (
+                <div key={pt.date} style={{
+                  background: '#0a0e17',
+                  border: `1px solid ${border}`,
+                  borderRadius: 22,
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                  transition: 'all 0.2s'
+                }}>
+                  
+                  {/* Card Header (Date & Status) */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 10 }}>
+                    <div>
+                      <h4 style={{ fontSize: 16, fontWeight: 900, color: '#f1f5f9', margin: '0 0 3px 0', textTransform: 'capitalize' }}>
+                        {weekday}
+                      </h4>
+                      <p style={{ fontSize: 11, color: '#64748b', margin: 0 }}>
+                        {shortDateStr}
+                      </p>
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      padding: '5px 12px',
+                      borderRadius: 10,
+                      background: bg,
+                      border: `1px solid ${border}`,
+                      color,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5
+                    }}>
+                      <Icon style={{ width: 12, height: 12 }} />
+                      {label}
+                    </div>
+                  </div>
+
+                  {/* Scientific Diagnostic text */}
+                  <p style={{
+                    fontSize: 12,
+                    color: '#94a3b8',
+                    lineHeight: 1.5,
+                    margin: 0,
+                    paddingLeft: 8,
+                    borderLeft: `2px solid ${color}`
                   }}>
-                    <td style={{ padding: '12px 16px', color: '#f1f5f9', fontWeight: 700 }}>{pt.label}</td>
-                    <td style={{ padding: '12px 16px', color: '#00a8ff', fontWeight: 800 }}>{pt.generalEntropy.toFixed(3)}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        padding: '4px 8px', borderRadius: 8, fontSize: 10, fontWeight: 800,
-                        background: isStable ? 'rgba(71,85,105,0.1)' : isRupture ? 'rgba(239,68,68,0.08)' : 'rgba(16,185,129,0.08)',
-                        border: `1px solid ${isStable ? 'rgba(71,85,105,0.2)' : isRupture ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)'}`,
-                        color: isStable ? '#64748b' : isRupture ? '#ef4444' : '#10b981'
-                      }}>
-                        {isStable ? '0.0%' : `${isRupture ? '+' : ''}${pt.generalDelta.toFixed(1)}%`}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', color: '#f59e0b', fontWeight: 600 }}>{pt.morningEntropy.toFixed(3)}</td>
-                    <td style={{ padding: '12px 16px', color: '#f97316', fontWeight: 600 }}>{pt.afternoonEntropy.toFixed(3)}</td>
-                    <td style={{ padding: '12px 16px', color: '#6366f1', fontWeight: 600 }}>{pt.nightEntropy.toFixed(3)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    {diagnosis}
+                  </p>
+
+                  {/* Individual Metrics Grid */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 10,
+                    background: '#000',
+                    border: '1px solid #1e293b',
+                    borderRadius: 16,
+                    padding: '12px'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                      <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Geral (Meta)</span>
+                      <span style={{ fontSize: 14, fontWeight: 900, color: '#00a8ff' }}>{pt.generalEntropy.toFixed(3)}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                      <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Manhã</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#f59e0b' }}>{pt.morningEntropy.toFixed(3)}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                      <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Tarde</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#f97316' }}>{pt.afternoonEntropy.toFixed(3)}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+                      <span style={{ fontSize: 9, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Noite</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: '#6366f1' }}>{pt.nightEntropy.toFixed(3)}</span>
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
     </div>
   );
 };
-export type { EntropyPoint };
