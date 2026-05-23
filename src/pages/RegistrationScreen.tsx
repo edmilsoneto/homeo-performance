@@ -35,7 +35,7 @@ export const RegistrationScreen = ({ userName, todayEntries, allEntries, onSave 
     
     if (hour >= 6 && hour < 12) active = 'Manhã';
     else if (hour >= 12 && hour < 18) active = 'Tarde';
-    else if (hour >= 18) active = 'Noite';
+    else if (hour >= 18 && hour <= 23) active = 'Noite';
 
     let next: ShiftType | null = null;
     if (active) {
