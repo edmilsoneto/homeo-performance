@@ -52,34 +52,48 @@ export function useAppData() {
     loadUsers();
   }, []);
 
-  // Load entries whenever logged in or auth changes — also triggers on mount for persisted sessions
-  const loadEntriesForUser = useCallback(async (user: any) => {
-    if (!user) return;
+  // Load entries for a single user by their ID
+  const loadAthleteEntries = useCallback(async (userId: string) => {
     try {
-      const url = user.role === 'admin' ? '/api/entries' : `/api/entries?userId=${user.id}`;
-      const entriesRes = await fetch(url);
+      const entriesRes = await fetch(`/api/entries?userId=${userId}`);
       if (entriesRes.ok) {
         const rawEntries = await entriesRes.json();
-        // Group by user_id (support both snake_case and camelCase column names)
-        const entriesMap: Record<string, ShiftEntry[]> = {};
-        rawEntries.forEach((e: any) => {
-          const uid = e.user_id || e.userId || user.id;
-          if (!entriesMap[uid]) entriesMap[uid] = [];
-          entriesMap[uid].push({
-            id: e.id,
-            date: e.date,
-            shift: e.shift,
-            intensity: Number(e.intensity),
-            feedback: e.feedback,
-            timestamp: Number(e.timestamp)
-          });
-        });
-        setData(prev => ({ ...prev, entries: entriesMap }));
+        const mapped: ShiftEntry[] = rawEntries.map((e: any) => ({
+          id: e.id,
+          date: e.date,
+          shift: e.shift,
+          intensity: Number(e.intensity),
+          feedback: e.feedback,
+          timestamp: Number(e.timestamp)
+        }));
+        setData(prev => ({ ...prev, entries: { ...prev.entries, [userId]: mapped } }));
       }
     } catch (err) {
-      console.error('Failed to load entries', err);
+      console.error('Failed to load entries for user', userId, err);
     }
   }, []);
+
+  // On login: for athlete load their own entries; for admin load all athletes' entries one-by-one
+  const loadEntriesForUser = useCallback(async (user: any) => {
+    if (!user) return;
+    if (user.role === 'admin') {
+      // Admin: load each athlete's entries individually to avoid fetching huge unfiltered datasets
+      try {
+        const athletesRes = await fetch('/api/athletes');
+        if (athletesRes.ok) {
+          const athletes = await athletesRes.json();
+          for (const athlete of athletes) {
+            await loadAthleteEntries(athlete.id);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load athletes for admin entries init', err);
+      }
+    } else {
+      // Regular athlete: load only their own entries
+      await loadAthleteEntries(user.id);
+    }
+  }, [loadAthleteEntries]);
 
   useEffect(() => {
     if (!auth.isLoggedIn || !auth.currentUser) return;
@@ -349,6 +363,7 @@ export function useAppData() {
     generateMockData,
     clearEntries,
     deleteAthlete,
+    loadAthleteEntries,
     subscribeToPushNotifications,
   };
 }
