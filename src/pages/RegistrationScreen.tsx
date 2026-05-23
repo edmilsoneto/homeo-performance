@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import type { ShiftType, GroupType, ShiftEntry } from '../types';
-import { determineGroup } from '../utils/entropy';
+
 import { Check, Save, Sun, Sunset, Moon, Calendar, Info } from 'lucide-react';
 
 interface Props {
@@ -22,26 +22,30 @@ const SHIFT_COLOR: Record<ShiftType, string> = {
   'Noite': '#6366f1'  // neon indigo
 };
 
-const GROUP_LABELS: Record<GroupType, { title: string; desc: string; color: string; bg: string; border: string }> = {
-  'Grupo A': { title: 'Grupo A', desc: 'Alto Rendimento / Estável', color: '#10b981', bg: 'rgba(16, 185, 129, 0.05)', border: 'rgba(16, 185, 129, 0.2)' },
-  'Grupo B': { title: 'Grupo B', desc: 'Funcional / Leve Oscilação', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.05)', border: 'rgba(59, 130, 246, 0.2)' },
-  'Grupo C': { title: 'Grupo C', desc: 'Fadiga Moderada / Alerta', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.05)', border: 'rgba(245, 158, 11, 0.2)' },
-  'Grupo D': { title: 'Grupo D', desc: 'Fadiga Elevada / Desvio', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.05)', border: 'rgba(239, 68, 68, 0.2)' },
-};
+
 
 export const RegistrationScreen = ({ userName, todayEntries, allEntries, onSave }: Props) => {
   const [selectedScore, setSelectedScore] = useState<number | null>(null);
   const [saved, setSaved] = useState(false);
 
-  // Determine next shift
-  const nextShift = useMemo<ShiftType | null>(() => {
-    const hasManha = todayEntries.some(e => e.shift === 'Manhã');
-    const hasTarde = todayEntries.some(e => e.shift === 'Tarde');
-    const hasNoite = todayEntries.some(e => e.shift === 'Noite');
-    if (!hasManha) return 'Manhã';
-    if (!hasTarde) return 'Tarde';
-    if (!hasNoite) return 'Noite';
-    return null;
+  // Determine next shift based on current time
+  const { currentActiveShift, nextShift } = useMemo<{ currentActiveShift: ShiftType | null, nextShift: ShiftType | null }>(() => {
+    const hour = new Date().getHours();
+    let active: ShiftType | null = null;
+    
+    if (hour >= 6 && hour < 12) active = 'Manhã';
+    else if (hour >= 12 && hour < 18) active = 'Tarde';
+    else if (hour >= 18) active = 'Noite';
+
+    let next: ShiftType | null = null;
+    if (active) {
+      const hasAnsweredActive = todayEntries.some(e => e.shift === active);
+      if (!hasAnsweredActive) {
+        next = active;
+      }
+    }
+    
+    return { currentActiveShift: active, nextShift: next };
   }, [todayEntries]);
 
   // Reset selection when nextShift changes
@@ -117,10 +121,14 @@ export const RegistrationScreen = ({ userName, todayEntries, allEntries, onSave 
           <Check style={{ width: 40, height: 40, color: '#00a8ff' }} />
         </div>
         <h2 style={{ fontSize: 24, fontWeight: 900, color: '#f1f5f9', textAlign: 'center', marginBottom: 8 }}>
-          Tudo certo por hoje!
+          Tudo certo por agora!
         </h2>
         <p style={{ fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 32 }}>
-          Você já registrou todos os seus turnos de hoje. Bom descanso!
+          {todayEntries.length === 3 || (todayEntries.some(e => e.shift === 'Noite') && currentActiveShift === 'Noite')
+            ? 'Você já registrou todos os seus turnos de hoje. Bom descanso!'
+            : (currentActiveShift 
+                ? 'Você já registrou seu turno atual. Aguarde o próximo!' 
+                : 'Os registros de hoje iniciam a partir das 6h da manhã. Bom descanso!')}
         </p>
 
         {/* Display completed shifts of today */}
@@ -133,17 +141,15 @@ export const RegistrationScreen = ({ userName, todayEntries, allEntries, onSave 
               const entry = todayEntries.find(e => e.shift === shift);
               const Icon = SHIFT_ICON[shift];
               const color = SHIFT_COLOR[shift];
-              const group = entry ? determineGroup(entry) : null;
-              
               return (
                 <div key={shift} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: '#000', borderRadius: 12, border: '1px solid #1e293b' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Icon style={{ width: 16, height: 16, color }} />
                     <span style={{ fontSize: 13, fontWeight: 600, color: '#f1f5f9' }}>{shift}</span>
                   </div>
-                  {group ? (
-                    <span style={{ fontSize: 12, fontWeight: 800, color: GROUP_LABELS[group].color }}>
-                      {entry && entry.intensity > 0 ? `${entry.intensity}/10` : GROUP_LABELS[group].title}
+                  {entry ? (
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981' }}>
+                      Obrigado por preencher
                     </span>
                   ) : (
                     <span style={{ fontSize: 11, color: '#475569' }}>Não registrado</span>
