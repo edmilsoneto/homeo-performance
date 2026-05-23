@@ -52,38 +52,39 @@ export function useAppData() {
     loadUsers();
   }, []);
 
-  // Load entries when logged in or when auth changes
+  // Load entries whenever logged in or auth changes — also triggers on mount for persisted sessions
+  const loadEntriesForUser = useCallback(async (user: any) => {
+    if (!user) return;
+    try {
+      const url = user.role === 'admin' ? '/api/entries' : `/api/entries?userId=${user.id}`;
+      const entriesRes = await fetch(url);
+      if (entriesRes.ok) {
+        const rawEntries = await entriesRes.json();
+        // Group by user_id (support both snake_case and camelCase column names)
+        const entriesMap: Record<string, ShiftEntry[]> = {};
+        rawEntries.forEach((e: any) => {
+          const uid = e.user_id || e.userId || user.id;
+          if (!entriesMap[uid]) entriesMap[uid] = [];
+          entriesMap[uid].push({
+            id: e.id,
+            date: e.date,
+            shift: e.shift,
+            intensity: Number(e.intensity),
+            feedback: e.feedback,
+            timestamp: Number(e.timestamp)
+          });
+        });
+        setData(prev => ({ ...prev, entries: entriesMap }));
+      }
+    } catch (err) {
+      console.error('Failed to load entries', err);
+    }
+  }, []);
+
   useEffect(() => {
     if (!auth.isLoggedIn || !auth.currentUser) return;
-    
-    async function loadEntries() {
-      const user = auth.currentUser;
-      if (!user) return;
-      try {
-        const entriesRes = await fetch(user.role === 'admin' ? '/api/entries' : `/api/entries?userId=${user.id}`);
-        if (entriesRes.ok) {
-          const rawEntries = await entriesRes.json();
-          // Group by user_id
-          const entriesMap: Record<string, ShiftEntry[]> = {};
-          rawEntries.forEach((e: any) => {
-            if (!entriesMap[e.user_id]) entriesMap[e.user_id] = [];
-            entriesMap[e.user_id].push({
-              id: e.id,
-              date: e.date,
-              shift: e.shift,
-              intensity: e.intensity,
-              feedback: e.feedback,
-              timestamp: Number(e.timestamp)
-            });
-          });
-          setData(prev => ({ ...prev, entries: entriesMap }));
-        }
-      } catch (err) {
-        console.error('Failed to load entries', err);
-      }
-    }
-    loadEntries();
-  }, [auth.isLoggedIn, auth.currentUser]);
+    loadEntriesForUser(auth.currentUser);
+  }, [auth.isLoggedIn, auth.currentUser, loadEntriesForUser]);
 
   const login = useCallback(async (userOrName: any, pin?: string) => {
     // If it's a direct user object (legacy fallback)
