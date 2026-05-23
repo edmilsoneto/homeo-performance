@@ -236,18 +236,71 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
     return { pendingCount: pending, alertCount: alerts };
   }, [athletes, getTodayEntries, getAllEntries]);
 
+  // Compute precise roll of alerts in the last 7 days for all athletes
+  const recentAlerts = useMemo(() => {
+    const alertsList: {
+      athleteId: string;
+      athleteName: string;
+      date: string;
+      weekday: string;
+      shift: string;
+      delta: number;
+      type: 'pico' | 'queda';
+      timestamp: number;
+    }[] = [];
+
+    athletes.forEach(athlete => {
+      const all = getAllEntries(athlete.id);
+      const points = generateDailyEntropyPoints(all);
+      
+      // Look at the last 7 daily points
+      const recentPoints = points.slice(-7);
+      
+      recentPoints.forEach(pt => {
+        const delta = pt.generalDelta;
+        if (Math.abs(delta) > 15) {
+          // Find the entries on that specific day
+          const dayEntries = all.filter(e => e.date === pt.date);
+          if (dayEntries.length === 0) return;
+
+          // Find the last entry registered on that day (which triggered the calculation)
+          const sorted = [...dayEntries].sort((a, b) => a.timestamp - b.timestamp);
+          const lastEntry = sorted[sorted.length - 1];
+          
+          const dateObj = new Date(pt.date + 'T12:00:00');
+          const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+          const formattedDate = dateObj.toLocaleDateString('pt-BR', { day: 'numeric', month: 'numeric' });
+
+          alertsList.push({
+            athleteId: athlete.id,
+            athleteName: athlete.name,
+            date: formattedDate,
+            weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1),
+            shift: lastEntry.shift,
+            delta: delta,
+            type: delta > 15 ? 'pico' : 'queda',
+            timestamp: lastEntry.timestamp
+          });
+        }
+      });
+    });
+
+    // Sort alerts by timestamp descending (most recent first)
+    return alertsList.sort((a, b) => b.timestamp - a.timestamp);
+  }, [athletes, getAllEntries]);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Quick Stats Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <div style={{
-          background: 'linear-gradient(135deg, rgba(239,68,68,0.1), #0a0e17)', border: '1px solid rgba(239,68,68,0.2)',
+          background: 'linear-gradient(135deg, rgba(139,92,246,0.1), #0a0e17)', border: '1px solid rgba(139,92,246,0.2)',
           padding: 20, borderRadius: 20, display: 'flex', flexDirection: 'column', gap: 8,
         }}>
-          <AlertTriangle style={{ width: 24, height: 24, color: '#ef4444' }} />
+          <AlertTriangle style={{ width: 24, height: 24, color: '#8b5cf6' }} />
           <div>
-            <p style={{ fontSize: 24, fontWeight: 900, color: '#ef4444' }}>{alertCount}</p>
-            <p style={{ fontSize: 11, color: '#fca5a5', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Desvios Hoje</p>
+            <p style={{ fontSize: 24, fontWeight: 900, color: '#8b5cf6' }}>{alertCount}</p>
+            <p style={{ fontSize: 11, color: '#c084fc', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Oscilações Hoje</p>
           </div>
         </div>
 
@@ -263,6 +316,60 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
         </div>
       </div>
 
+      {/* Central Volatility Alert Feed */}
+      <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 20, padding: 20 }}>
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Activity style={{ width: 15, height: 15, color: '#8b5cf6' }} />
+          Alertas de Oscilações Recentes (Últimos 7 dias)
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {recentAlerts.length === 0 ? (
+            <p style={{ color: '#64748b', fontSize: 12, margin: 0 }}>
+              Nenhuma oscilação fora do padrão registrada nos últimos 7 dias.
+            </p>
+          ) : (
+            recentAlerts.map((alert, idx) => {
+              const color = alert.type === 'pico' ? '#00a8ff' : '#8b5cf6';
+              const bg = alert.type === 'pico' ? 'rgba(0,168,255,0.06)' : 'rgba(139,92,246,0.06)';
+              const border = alert.type === 'pico' ? 'rgba(0,168,255,0.15)' : 'rgba(139,92,246,0.15)';
+              const label = alert.type === 'pico' ? 'Pico de Volatilidade' : 'Queda de Volatilidade';
+              
+              return (
+                <div key={idx} style={{
+                  background: bg,
+                  border: `1px solid ${border}`,
+                  padding: '14px 16px',
+                  borderRadius: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9' }}>{alert.athleteName}</span>
+                    <span style={{
+                      fontSize: 9,
+                      fontWeight: 800,
+                      padding: '3px 8px',
+                      borderRadius: 6,
+                      background: 'rgba(0,0,0,0.3)',
+                      color,
+                      textTransform: 'uppercase',
+                      letterSpacing: 0.5
+                    }}>
+                      {label}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 12, color: '#94a3b8', margin: 0, lineHeight: 1.4 }}>
+                    Ocorreu no dia <strong>{alert.weekday} ({alert.date})</strong> no turno da <strong>{alert.shift}</strong> com variação de <strong>{alert.delta > 0 ? '+' : ''}{alert.delta}%</strong>.
+                  </p>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* List of athletes who answered today */}
       <div style={{ background: '#0a0e17', border: '1px solid #1e293b', borderRadius: 20, padding: 20 }}>
         <p style={{ fontSize: 13, fontWeight: 700, color: '#f1f5f9', marginBottom: 16 }}>
           Atletas que Responderam Hoje

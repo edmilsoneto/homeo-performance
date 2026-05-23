@@ -109,26 +109,26 @@ export const AthleteDashboard = ({ entries }: Props) => {
     const todayPt = dailyPoints[dailyPoints.length - 1];
     
     const delta = todayPt.generalDelta;
-    let label = 'Estável';
-    let desc = 'Rotina consistente com o padrão adaptativo normal.';
-    let color = '#10b981'; // Green
-    let bg = 'rgba(16, 185, 129, 0.08)';
-    let border = 'rgba(16, 185, 129, 0.2)';
+    let label = 'Estabilidade de Volatilidade';
+    let desc = 'Oscilação de rotina dentro dos limites adaptativos normais.';
+    let color = '#94a3b8'; // Slate Gray
+    let bg = 'rgba(148, 163, 184, 0.08)';
+    let border = 'rgba(148, 163, 184, 0.2)';
     let Icon = ShieldCheck;
 
     if (delta > 15) {
-      label = 'Ruptura (Alta Instabilidade)';
-      desc = `Desorganização acentuada na rotina em relação a ontem (+${delta}%). Alerta de pico de estresse, sono desregulado ou quebras drásticas de hábitos.`;
-      color = '#ef4444'; // Red
-      bg = 'rgba(239, 68, 68, 0.08)';
-      border = 'rgba(239, 68, 68, 0.2)';
+      label = 'Pico de Volatilidade (Alta Oscilação)';
+      desc = `Aumento expressivo na variação diária de hábitos em relação a ontem (+${delta}%). Indica uma oscilação de rotina acentuada.`;
+      color = '#00a8ff'; // Neon Blue
+      bg = 'rgba(0, 168, 255, 0.08)';
+      border = 'rgba(0, 168, 255, 0.2)';
       Icon = AlertTriangle;
     } else if (delta < -15) {
-      label = 'Rigidez (Volatilidade Baixa)';
-      desc = `Queda acentuada de variação em relação a ontem (${delta}%). Alerta para rotinas excessivamente monótonas ou início de quadro de fadiga crônica por monotonia.`;
-      color = '#f59e0b'; // Amber
-      bg = 'rgba(245, 158, 11, 0.08)';
-      border = 'rgba(245, 158, 11, 0.2)';
+      label = 'Queda de Volatilidade (Baixa Oscilação)';
+      desc = `Queda acentuada na variação dos turnos em relação a ontem (${delta}%). Indica uma rotina mecânica de alta constância.`;
+      color = '#8b5cf6'; // Neon Purple
+      bg = 'rgba(139, 92, 246, 0.08)';
+      border = 'rgba(139, 92, 246, 0.2)';
       Icon = AlertTriangle;
     }
 
@@ -556,43 +556,43 @@ export const AthleteDashboard = ({ entries }: Props) => {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid #1e293b', paddingBottom: 10 }}>
               <Info style={{ width: 16, height: 16, color: '#00a8ff' }} />
               <h4 style={{ fontSize: 13, fontWeight: 800, color: '#f1f5f9', margin: 0, textTransform: 'uppercase', letterSpacing: 1.5 }}>
-                Legenda Científica do Painel de Anomalias
+                Legenda Científica do Painel de Volatilidade
               </h4>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 12, lineHeight: 1.5, color: '#94a3b8' }}>
               <p style={{ margin: 0 }}>
-                O painel de anomalias analisa a <strong>oscilação diária (Meta-Entropia Geral)</strong> para detectar quebras abruptas na consistência de hábitos do atleta.
+                O painel analisa a <strong>oscilação diária (Meta-Entropia Geral)</strong> para detectar variações no padrão de hábitos do atleta.
               </p>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, marginTop: 4 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontWeight: 800, color: '#ef4444', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444' }} />
-                    ⚠️ Ruptura (&gt; +15%)
+                  <span style={{ fontWeight: 800, color: '#00a8ff', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#00a8ff' }} />
+                    Pico de Volatilidade (&gt; +15%)
                   </span>
                   <span style={{ color: '#64748b' }}>
-                    Ocorre quando há um pico súbito de entropia. Indica desorganização expressiva, quebra de rotina, variações drásticas nos turnos ou pico de estresse comportamental.
+                    Ocorre quando a entropia sobe abruptamente. Indica quebra no padrão de hábitos ou variação drástica na distribuição dos turnos.
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f59e0b' }} />
-                    ⚠️ Rigidez (&lt; -15%)
+                  <span style={{ fontWeight: 800, color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6' }} />
+                    Queda de Volatilidade (&lt; -15%)
                   </span>
                   <span style={{ color: '#64748b' }}>
-                    Ocorre quando a entropia despenca. Indica rotina puramente mecânica, monotonia excessiva ou início de quadro de fadiga (monotonia biológica prejudicial à adaptação).
+                    Ocorre quando a entropia cai significativamente. Indica rotina puramente mecânica de alta previsibilidade comportamental.
                   </span>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontWeight: 800, color: '#10b981', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10b981' }} />
-                    ✓ Estável (Dentro de ±15%)
+                  <span style={{ fontWeight: 800, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#94a3b8' }} />
+                    Estabilidade (Dentro de ±15%)
                   </span>
                   <span style={{ color: '#64748b' }}>
-                    Oscilação dentro dos limites fisiológicos normais. Representa consistência comportamental saudável e hábitos adaptativos estáveis.
+                    Oscilação dentro dos limites estatísticos normais. Representa consistência e hábitos adaptativos estáveis.
                   </span>
                 </div>
               </div>
@@ -747,27 +747,27 @@ export const AthleteDashboard = ({ entries }: Props) => {
               {/* Natural chronological order: Older to Newer, following weekday order! */}
               {processedHistoryPoints.map(pt => {
                 const delta = pt.generalDelta;
-                let label = 'Estável';
-                let color = '#10b981';
-                let bg = 'rgba(16, 185, 129, 0.06)';
-                let border = 'rgba(16, 185, 129, 0.15)';
+                let label = 'Estabilidade';
+                let color = '#94a3b8'; // Slate Gray
+                let bg = 'rgba(148, 163, 184, 0.06)';
+                let border = 'rgba(148, 163, 184, 0.15)';
                 let Icon = Check;
-                let diagnosis = `Variação normal de rotina (${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%). Indica adaptação saudável e consistência comportamental estável.`;
+                let diagnosis = `Variação de rotina dentro dos limites normais (${delta >= 0 ? '+' : ''}${delta.toFixed(1)}%). Representa consistência estatística estável.`;
 
                 if (delta > 15) {
-                  label = 'Ruptura (Alta Instabilidade)';
-                  color = '#ef4444';
-                  bg = 'rgba(239, 68, 68, 0.06)';
-                  border = 'rgba(239, 68, 68, 0.15)';
+                  label = 'Pico de Volatilidade';
+                  color = '#00a8ff'; // Neon Blue
+                  bg = 'rgba(0, 168, 255, 0.06)';
+                  border = 'rgba(0, 168, 255, 0.15)';
                   Icon = AlertTriangle;
-                  diagnosis = `Desorganização acentuada na rotina em relação ao dia anterior (+${delta.toFixed(1)}%). Alerta para picos de estresse, sono desregulado ou quebras drásticas de hábitos e horários.`;
+                  diagnosis = `Aumento expressivo na variação diária de hábitos (+${delta.toFixed(1)}%). Indica quebra no padrão de distribuição dos turnos.`;
                 } else if (delta < -15) {
-                  label = 'Rigidez (Volatilidade Baixa)';
-                  color = '#f59e0b';
-                  bg = 'rgba(245, 158, 11, 0.06)';
-                  border = 'rgba(245, 158, 11, 0.15)';
+                  label = 'Queda de Volatilidade';
+                  color = '#8b5cf6'; // Neon Purple
+                  bg = 'rgba(139, 92, 246, 0.06)';
+                  border = 'rgba(139, 92, 246, 0.15)';
                   Icon = AlertTriangle;
-                  diagnosis = `Queda acentuada na oscilação dos turnos (${delta.toFixed(1)}%). Alerta para rotinas excessivamente mecânicas, monotonia de estímulos ou início de fadiga crônica por falta de carga adaptativa.`;
+                  diagnosis = `Queda acentuada na oscilação dos turnos (${delta.toFixed(1)}%). Indica rotina de alta constância comportamental.`;
                 }
 
                 // Get complete weekday name in Portuguese
