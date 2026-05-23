@@ -163,14 +163,17 @@ export function useAppData() {
   }, [data.users]);
 
   const saveEntry = useCallback(async (userId: string, entry: ShiftEntry) => {
-    // Optimistic UI update
+    // Optimistic UI update immediately
     setData(prev => {
       const userEntries = prev.entries[userId] || [];
+      // Avoid duplicate if entry with same date+shift already exists
+      const exists = userEntries.some(e => e.date === entry.date && e.shift === entry.shift);
+      if (exists) return prev;
       return { ...prev, entries: { ...prev.entries, [userId]: [...userEntries, entry] } };
     });
 
     try {
-      await fetch('/api/entries', {
+      const res = await fetch('/api/entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -182,10 +185,14 @@ export function useAppData() {
           timestamp: entry.timestamp
         })
       });
+      if (res.ok) {
+        // Reload from server to ensure consistency (server-assigned id etc.)
+        await loadAthleteEntries(userId);
+      }
     } catch (err) {
       console.error('Failed to save entry', err);
     }
-  }, []);
+  }, [loadAthleteEntries]);
 
   const getEntries = useCallback((userId: string, days: number = 7): ShiftEntry[] => {
     const all = data.entries[userId] || [];
