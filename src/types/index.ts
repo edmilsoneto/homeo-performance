@@ -1,5 +1,6 @@
 export type ShiftType = 'Manhã' | 'Tarde' | 'Noite';
-export type FeedbackType = 'Bom' | 'Ruim';
+export type GroupType = 'Grupo A' | 'Grupo B' | 'Grupo C' | 'Grupo D';
+export type FeedbackType = 'Bom' | 'Ruim' | GroupType | 'A' | 'B' | 'C' | 'D';
 export type UserRole = 'atleta' | 'admin' | 'athlete';
 
 export interface ShiftEntry {

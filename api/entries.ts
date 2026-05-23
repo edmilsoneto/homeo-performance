@@ -19,16 +19,32 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const { userId, date, shift, intensity, feedback, timestamp } = req.body;
     try {
-      const result = await sql`
-        INSERT INTO shifts (user_id, date, shift, intensity, feedback, timestamp)
-        VALUES (${userId}, ${date}, ${shift}, ${intensity}, ${feedback}, ${timestamp})
-        RETURNING *
-      `;
-      return res.status(201).json(result[0]);
+      if (Array.isArray(req.body)) {
+        const entries = req.body;
+        const inserted = [];
+        for (const entry of entries) {
+          const { userId, date, shift, intensity, feedback, timestamp } = entry;
+          const result = await sql`
+            INSERT INTO shifts (user_id, date, shift, intensity, feedback, timestamp)
+            VALUES (${userId}, ${date}, ${shift}, ${intensity}, ${feedback}, ${timestamp})
+            RETURNING *
+          `;
+          inserted.push(result[0]);
+        }
+        return res.status(201).json({ count: inserted.length, inserted });
+      } else {
+        const { userId, date, shift, intensity, feedback, timestamp } = req.body;
+        const result = await sql`
+          INSERT INTO shifts (user_id, date, shift, intensity, feedback, timestamp)
+          VALUES (${userId}, ${date}, ${shift}, ${intensity}, ${feedback}, ${timestamp})
+          RETURNING *
+        `;
+        return res.status(201).json(result[0]);
+      }
     } catch (error) {
-      return res.status(500).json({ error: 'Erro ao salvar registro' });
+      console.error(error);
+      return res.status(500).json({ error: 'Erro ao salvar registro(s)' });
     }
   }
 

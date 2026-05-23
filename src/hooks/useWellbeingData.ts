@@ -165,9 +165,78 @@ export function useAppData() {
     }
   }, []);
 
-  const generateMockData = useCallback(async (_userId: string) => {
-    // For Vercel/Neon MVP, mocking large datasets directly via API might be slow.
-    alert('A injeção de 1 ano de dados requer acesso direto ao banco. Utilize o app real para gerar dados diários.');
+  const generateMockData = useCallback(async (userId: string) => {
+    const mockEntries: any[] = [];
+    const now = new Date();
+    const shifts = ['Manhã', 'Tarde', 'Noite'];
+    
+    for (let i = 59; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayIndex = 59 - i;
+      
+      let pList: string[] = [];
+      if ((dayIndex >= 12 && dayIndex <= 18) || (dayIndex >= 42 && dayIndex <= 48)) {
+        // High volatility periods (spikes)
+        pList = ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D'];
+      } else if (dayIndex >= 19 && dayIndex <= 28) {
+        // Recovery periods
+        pList = ['Grupo A', 'Grupo B', 'Grupo B', 'Grupo C', 'Grupo C'];
+      } else {
+        // Stable routine periods
+        pList = ['Grupo A', 'Grupo A', 'Grupo B', 'Grupo B', 'Grupo B'];
+      }
+
+      shifts.forEach((shift, sIdx) => {
+        const randomGroup = pList[Math.floor(Math.random() * pList.length)];
+        const timestamp = new Date(dateStr + 'T12:00:00').getTime() + (sIdx * 1000 * 3600 * 4);
+        
+        mockEntries.push({
+          userId,
+          date: dateStr,
+          shift,
+          feedback: randomGroup,
+          intensity: 0,
+          timestamp
+        });
+      });
+    }
+
+    try {
+      const res = await fetch('/api/entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mockEntries)
+      });
+      if (res.ok) {
+        const result = await res.json();
+        const mappedEntries = result.inserted.map((e: any) => ({
+          id: e.id,
+          date: e.date,
+          shift: e.shift,
+          intensity: e.intensity,
+          feedback: e.feedback,
+          timestamp: Number(e.timestamp)
+        }));
+        
+        setData(prev => {
+          return {
+            ...prev,
+            entries: {
+              ...prev.entries,
+              [userId]: mappedEntries
+            }
+          };
+        });
+        alert('60 dias de dados de calibração gerados com sucesso!');
+      } else {
+        alert('Erro ao gerar dados sintéticos.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro de conexão ao gerar dados.');
+    }
   }, []);
 
   const clearEntries = useCallback(async (userId: string) => {
