@@ -211,8 +211,8 @@ export const AdminDashboard = ({ athletes, getEntries, getAllEntries, getTodayEn
       {isRegistering && (
         <RegisterAthleteModal
           onClose={() => setIsRegistering(false)}
-          onRegister={(name, pin, whatsapp) => {
-            registerAthlete(name, pin, whatsapp);
+          onRegister={async (name, pin, whatsapp) => {
+            await registerAthlete(name, pin, whatsapp);
             setIsRegistering(false);
           }}
         />
@@ -550,16 +550,20 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
   );
 }
 
-function RegisterAthleteModal({ onClose, onRegister }: { onClose: () => void, onRegister: (name: string, pin: string, whatsapp?: string) => void }) {
+function RegisterAthleteModal({ onClose, onRegister }: { onClose: () => void, onRegister: (name: string, pin: string, whatsapp?: string) => Promise<void> }) {
   const [name, setName] = useState('');
   const [pin, setPin] = useState('');
   const [whatsapp, setWhatsapp] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim()) { setError('Nome é obrigatório'); return; }
     if (pin.length < 4) { setError('O PIN precisa ter pelo menos 4 dígitos'); return; }
-    onRegister(name.trim(), pin, whatsapp.trim() || undefined);
+    try {
+      await onRegister(name.trim(), pin, whatsapp.trim() || undefined);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao cadastrar. Tente outro nome.');
+    }
   };
 
   return (

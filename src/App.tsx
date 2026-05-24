@@ -182,7 +182,7 @@ const AdminView = () => {
           getEntries={getEntriesCache as any}
           getAllEntries={getAllEntriesCache as any}
           getTodayEntries={getTodayEntriesCache as any}
-          registerAthlete={(name, pin, whatsapp) => register({ name, pin, whatsapp }) as any}
+          registerAthlete={async (name, pin, whatsapp) => { await register({ name, pin, whatsapp }); }}
           deleteAthlete={remove as any}
           generateMockData={generateMockDataFn as any}
           clearEntries={clearEntries as any}
