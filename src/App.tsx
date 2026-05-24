@@ -81,9 +81,19 @@ const AdminView = () => {
   });
 
   const getEntriesCache = (userId: string, days: number = 7) => {
-    // Procura na cache ativa ou fetchado
-    const q = queries.find(q => q.data && q.data.length > 0 && String((q.data[0] as any).user_id || (q.data[0] as any).userId) === String(userId)) || queryClient.getQueryData(['entries', userId]) as any;
-    let all = Array.isArray(q?.data) ? q.data : (Array.isArray(q) ? q : []);
+    // Encontra o indice do atleta na lista
+    const athleteIndex = athletes.findIndex(a => String(a.id) === String(userId));
+    const q = athleteIndex >= 0 ? queries[athleteIndex] : null;
+    
+    // Pega os dados do query hook ou tenta forçar no cache do client
+    let all = [];
+    if (q && Array.isArray(q.data)) {
+      all = q.data;
+    } else {
+      const cached = queryClient.getQueryData(['entries', userId]) as any;
+      if (Array.isArray(cached)) all = cached;
+    }
+
     if (!all || all.length === 0) return [];
     
     const mapped = all.map((e:any) => ({
@@ -122,7 +132,7 @@ const AdminView = () => {
           getEntries={getEntriesCache as any}
           getAllEntries={getAllEntriesCache as any}
           getTodayEntries={getTodayEntriesCache as any}
-          registerAthlete={register as any}
+          registerAthlete={(name, pin, whatsapp) => register({ name, pin, whatsapp }) as any}
           deleteAthlete={remove as any}
           generateMockData={async () => { alert('Geração de mock desativada temporariamente na reestruturação.'); }}
           clearEntries={clearEntries as any}
