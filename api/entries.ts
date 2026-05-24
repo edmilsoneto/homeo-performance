@@ -58,17 +58,13 @@ export default async function handler(req: any, res: any) {
           return res.status(201).json({ count: 0, inserted: [] });
         }
 
-        const valueStrings: string[] = [];
-        const params: any[] = [];
-        let i = 1;
-        for (const e of entries) {
-          valueStrings.push(`($${i},$${i+1},$${i+2},$${i+3},$${i+4},$${i+5})`);
-          params.push(e.userId, e.date, e.shift, e.intensity ?? 0, e.feedback, e.timestamp);
-          i += 6;
-        }
-        const q = `INSERT INTO shifts(user_id,date,shift,intensity,feedback,timestamp) VALUES ${valueStrings.join(',')} RETURNING id,user_id,date,shift,intensity,feedback,timestamp`;
-        const result = await sql.unsafe(q, params);
-        return res.status(201).json({ count: result.length, inserted: result });
+        const insertedRows = await Promise.all(entries.map(e => sql`
+          INSERT INTO shifts(user_id, date, shift, intensity, feedback, timestamp)
+          VALUES (${e.userId}, ${e.date}, ${e.shift}, ${e.intensity ?? 0}, ${e.feedback}, ${e.timestamp})
+          RETURNING id, user_id, date, shift, intensity, feedback, timestamp
+        `));
+        const flatInserted = insertedRows.map(r => r[0]);
+        return res.status(201).json({ count: flatInserted.length, inserted: flatInserted });
       }
 
       // Single entry insert
