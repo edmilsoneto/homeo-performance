@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import type { User, ShiftEntry } from '../types';
-import { generateDailyEntropyPoints, calculateDeltaPercentage } from '../utils/entropy';
+import { generateDailyEntropyPoints } from '../utils/entropy';
 import { AthleteDashboard } from './AthleteDashboard';
 import {
   Users, ChevronRight, AlertTriangle, ArrowLeft,
