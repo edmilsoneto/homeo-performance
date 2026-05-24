@@ -27,6 +27,12 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('homeo_auth');
+      window.location.href = '/login';
+      return null;
+    }
+    
     const errText = await response.text();
     let errMsg = `Error ${response.status}`;
     try {
