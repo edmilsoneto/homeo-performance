@@ -114,6 +114,56 @@ const AdminView = () => {
     return all.filter((e: any) => e.date === dateStr);
   };
 
+  const generateMockDataFn = async (userId: string) => {
+    if (!confirm('Isto irá apagar as notas atuais e gerar 1 ano de dados simulados (mock). Continuar?')) return;
+    
+    await clearEntries(userId as string);
+    
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1).getTime();
+    const daysPassed = Math.floor((now.getTime() - start) / 86400000);
+    
+    const shifts = ['Manhã', 'Tarde', 'Noite'];
+    let mockEntries = [];
+    
+    for (let i = 0; i <= daysPassed; i++) {
+      const dateObj = new Date(start + i * 86400000);
+      const dateStr = dateObj.toISOString().split('T')[0];
+      
+      const hasSpike = Math.random() > 0.95;
+      const hasDrop = !hasSpike && Math.random() > 0.95;
+      
+      for (const shift of shifts) {
+        let intensity = Math.floor(Math.random() * 4) + 6; 
+        if (hasSpike) intensity = Math.min(10, intensity + 3);
+        if (hasDrop) intensity = Math.max(0, intensity - 4);
+        
+        let feedback = 'Grupo B';
+        if (intensity >= 9) feedback = 'Grupo A';
+        else if (intensity <= 5) feedback = 'Grupo C';
+        
+        mockEntries.push({
+          userId,
+          date: dateStr,
+          shift,
+          intensity,
+          feedback,
+          timestamp: dateObj.getTime() + (shifts.indexOf(shift) * 3600000)
+        });
+      }
+    }
+    
+    // Divide the inserts into chunks to prevent payload too large errors
+    const chunkSize = 200;
+    for (let i = 0; i < mockEntries.length; i += chunkSize) {
+      const chunk = mockEntries.slice(i, i + chunkSize);
+      await apiFetch('/api/entries', { method: 'POST', body: JSON.stringify(chunk) });
+    }
+    
+    await queryClient.invalidateQueries({ queryKey: ['entries', userId] });
+    alert('Simulação de 1 ano concluída!');
+  };
+
   const loadAthleteEntriesFn = async (userId: string) => {
     await queryClient.prefetchQuery({ queryKey: ['entries', userId], queryFn: () => apiFetch(`/api/entries?userId=${userId}`) });
   };
@@ -134,7 +184,7 @@ const AdminView = () => {
           getTodayEntries={getTodayEntriesCache as any}
           registerAthlete={(name, pin, whatsapp) => register({ name, pin, whatsapp }) as any}
           deleteAthlete={remove as any}
-          generateMockData={async () => { alert('Geração de mock desativada temporariamente na reestruturação.'); }}
+          generateMockData={generateMockDataFn as any}
           clearEntries={clearEntries as any}
           loadAthleteEntries={loadAthleteEntriesFn as any}
         />

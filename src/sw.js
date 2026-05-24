@@ -1,5 +1,14 @@
 import { precacheAndRoute } from 'workbox-precaching';
 
+// Força o Service Worker a atualizar imediatamente todas as abas abertas
+self.addEventListener('install', () => {
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 // Precaching from workbox (Vite PWA injects the manifest here)
 precacheAndRoute(self.__WB_MANIFEST || []);
 
