@@ -1,5 +1,19 @@
 import { neon } from '@neondatabase/serverless';
-import { verifyToken } from './_utils/auth';
+import jwt from 'jsonwebtoken';
+
+function verifyToken(req: any) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    throw new Error('Token ausente ou inválido');
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_troque_em_producao');
+    return decoded as { id: string | number, role: string };
+  } catch (err) {
+    throw new Error('Token expirado ou inválido');
+  }
+}
 
 const VAPID_PUBLIC_KEY = 'BKnbcJPC7NQ37L87utz-N1KxskF6ta7sUCNHyDhIViJhil9HerhlIC75KLNZz08D4mv_AdzAQ0EeK23ueyF0P9k';
 
