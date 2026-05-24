@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -35,7 +36,12 @@ export default async function handler(req, res) {
       }
 
       if (isValid) {
-        return res.status(200).json({ id: user.id, name: user.name, role: user.role });
+        const token = jwt.sign(
+          { id: user.id, role: user.role },
+          process.env.JWT_SECRET || 'fallback_secret_troque_em_producao',
+          { expiresIn: '7d' }
+        );
+        return res.status(200).json({ id: user.id, name: user.name, role: user.role, token });
       } else {
         return res.status(401).json({ error: 'Credenciais inválidas' });
       }

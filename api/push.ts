@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { verifyToken } from './_utils/auth';
 
 const VAPID_PUBLIC_KEY = 'BKnbcJPC7NQ37L87utz-N1KxskF6ta7sUCNHyDhIViJhil9HerhlIC75KLNZz08D4mv_AdzAQ0EeK23ueyF0P9k';
 
@@ -23,8 +24,18 @@ export default async function handler(req, res) {
     return res.status(200).json({ publicKey: VAPID_PUBLIC_KEY });
   }
 
+  let tokenUser;
+  try {
+    tokenUser = verifyToken(req);
+  } catch (err: any) {
+    return res.status(401).json({ error: err.message });
+  }
+
   if (req.method === 'POST') {
     const { userId, subscription } = req.body;
+    if (tokenUser.role !== 'admin' && String(tokenUser.id) !== String(userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
+    }
     if (!userId || !subscription) {
       return res.status(400).json({ error: 'Parâmetros userId e subscription são obrigatórios' });
     }

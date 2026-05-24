@@ -1,8 +1,16 @@
 import { neon } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
+import { verifyToken } from './_utils/auth';
 
 // Vercel Serverless Function
 export default async function handler(req, res) {
+  let tokenUser;
+  try {
+    tokenUser = verifyToken(req);
+  } catch (err: any) {
+    return res.status(401).json({ error: err.message });
+  }
+
   const sql = neon(process.env.DATABASE_URL);
 
   if (req.method === 'GET') {
@@ -15,6 +23,9 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
+    if (tokenUser.role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas admins podem criar atletas' });
+    }
     const { name, pin, whatsapp } = req.body;
     try {
       const hashedPin = bcrypt.hashSync(pin, 10);
@@ -30,6 +41,9 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'DELETE') {
+    if (tokenUser.role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas admins podem remover atletas' });
+    }
     const { id } = req.query;
     try {
       await sql`DELETE FROM users WHERE id = ${id} AND role = 'athlete'`;

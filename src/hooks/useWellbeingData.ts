@@ -1,120 +1,20 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { User, AppData, ShiftEntry, AuthState } from '../types';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
+import { apiFetch } from '../lib/api';
+import type { User, ShiftEntry, AuthState } from '../types';
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding)
-    .replace(/\-/g, '+')
-    .replace(/_/g, '/');
-
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
-export function useAppData() {
-  const [data, setData] = useState<AppData>({ users: [], entries: {} });
+export function useAuth() {
   const [auth, setAuth] = useState<AuthState>(() => {
     const saved = localStorage.getItem('homeo_auth');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        // ignore
-      }
-    }
-    return { isLoggedIn: false, currentUser: null };
+    return saved ? JSON.parse(saved) : { isLoggedIn: false, currentUser: null };
   });
-  const [loading, setLoading] = useState(true);
 
-  // Load all users on mount
-  useEffect(() => {
-    async function loadUsers() {
-      try {
-        const res = await fetch('/api/athletes');
-        if (res.ok) {
-          const athletes = await res.json();
-          // We also need the admin user, but admin logs in directly via /api/auth
-          // For the team list, we just need the athletes.
-          // Let's store athletes in users. The admin user isn't strictly needed in the list.
-          setData(prev => ({ ...prev, users: athletes }));
-        }
-      } catch (err) {
-        console.error('Failed to load athletes', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadUsers();
-  }, []);
-
-  // Load entries for a single user by their ID
-  const loadAthleteEntries = useCallback(async (userId: string) => {
-    try {
-      const entriesRes = await fetch(`/api/entries?userId=${userId}`);
-      if (entriesRes.ok) {
-        const rawEntries = await entriesRes.json();
-        const mapped: ShiftEntry[] = rawEntries.map((e: any) => ({
-          id: e.id,
-          date: e.date,
-          shift: e.shift,
-          intensity: Number(e.intensity),
-          feedback: e.feedback,
-          timestamp: Number(e.timestamp)
-        }));
-        setData(prev => ({ ...prev, entries: { ...prev.entries, [userId]: mapped } }));
-      }
-    } catch (err) {
-      console.error('Failed to load entries for user', userId, err);
-    }
-  }, []);
-
-  // On login: for athlete load their own entries; for admin load all athletes' entries one-by-one
-  const loadEntriesForUser = useCallback(async (user: any) => {
-    if (!user) return;
-    if (user.role === 'admin') {
-      // Admin: load each athlete's entries individually to avoid fetching huge unfiltered datasets
-      try {
-        const athletesRes = await fetch('/api/athletes');
-        if (athletesRes.ok) {
-          const athletes = await athletesRes.json();
-          for (const athlete of athletes) {
-            await loadAthleteEntries(athlete.id);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load athletes for admin entries init', err);
-      }
-    } else {
-      // Regular athlete: load only their own entries
-      await loadAthleteEntries(user.id);
-    }
-  }, [loadAthleteEntries]);
-
-  useEffect(() => {
-    if (!auth.isLoggedIn || !auth.currentUser) return;
-    loadEntriesForUser(auth.currentUser);
-  }, [auth.isLoggedIn, auth.currentUser, loadEntriesForUser]);
-
-  const login = useCallback(async (userOrName: any, pin?: string) => {
-    // If it's a direct user object (legacy fallback)
-    if (userOrName.id && !pin) {
-      const newAuth = { isLoggedIn: true, currentUser: userOrName };
-      setAuth(newAuth);
-      localStorage.setItem('homeo_auth', JSON.stringify(newAuth));
-      return true;
-    }
-    
-    // API login
+  const login = async (name: string, pin?: string) => {
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: userOrName, pin })
+        body: JSON.stringify({ name, pin })
       });
       if (res.ok) {
         const user = await res.json();
@@ -124,253 +24,96 @@ export function useAppData() {
         return true;
       }
       return false;
-    } catch (err) {
-      console.error(err);
+    } catch {
       return false;
     }
-  }, []);
+  };
 
-  const logout = useCallback(() => {
+  const logout = () => {
     setAuth({ isLoggedIn: false, currentUser: null });
     localStorage.removeItem('homeo_auth');
-    setData({ users: [], entries: {} }); // clear data on logout for security
-    // Reload users just in case
-    fetch('/api/athletes').then(r => r.json()).then(athletes => {
-      setData(prev => ({ ...prev, users: athletes }));
-    });
-  }, []);
+  };
 
-  const registerAthlete = useCallback(async (name: string, pin: string, whatsapp?: string) => {
+  return { auth, login, logout };
+}
+
+export function useAthletes() {
+  return useQuery<User[]>({
+    queryKey: ['athletes'],
+    queryFn: () => apiFetch('/api/athletes')
+  });
+}
+
+export function useAthleteEntries(userId: string) {
+  return useQuery<ShiftEntry[]>({
+    queryKey: ['entries', userId],
+    queryFn: () => apiFetch(`/api/entries?userId=${userId}`),
+    enabled: !!userId,
+  });
+}
+
+export function useMutateAthlete() {
+  const queryClient = useQueryClient();
+  
+  const register = useMutation({
+    mutationFn: (data: { name: string, pin: string, whatsapp?: string }) => 
+      apiFetch('/api/athletes', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['athletes'] })
+  });
+
+  const remove = useMutation({
+    mutationFn: (userId: string) => apiFetch(`/api/athletes?id=${userId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['athletes'] });
+    }
+  });
+
+  return { register: register.mutateAsync, remove: remove.mutateAsync };
+}
+
+export function useMutateEntries() {
+  const queryClient = useQueryClient();
+
+  const saveEntry = useMutation({
+    mutationFn: (data: any) => apiFetch('/api/entries', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['entries', variables.userId] });
+    }
+  });
+
+  const clearEntries = useMutation({
+    mutationFn: (userId: string) => apiFetch(`/api/entries?userId=${userId}`, { method: 'DELETE' }),
+    onSuccess: (_, userId) => queryClient.invalidateQueries({ queryKey: ['entries', userId] })
+  });
+
+  return { saveEntry: saveEntry.mutateAsync, clearEntries: clearEntries.mutateAsync };
+}
+
+export function usePushSubscription() {
+  return useCallback(async (userId: string) => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
     try {
-      const res = await fetch('/api/athletes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, pin, whatsapp })
-      });
-      if (res.ok) {
-        const user = await res.json();
-        setData(prev => ({ ...prev, users: [...prev.users, user] }));
-        return user;
-      }
-    } catch (err) {
-      console.error('Failed to register', err);
-    }
-    return null;
-  }, []);
-
-  const getAthletes = useCallback((): User[] => {
-    return data.users.filter(u => u.role === 'athlete');
-  }, [data.users]);
-
-  const saveEntry = useCallback(async (userId: string, entry: ShiftEntry) => {
-    // Optimistic UI update immediately
-    setData(prev => {
-      const userEntries = prev.entries[userId] || [];
-      // Avoid duplicate if entry with same date+shift already exists
-      const exists = userEntries.some(e => e.date === entry.date && e.shift === entry.shift);
-      if (exists) return prev;
-      return { ...prev, entries: { ...prev.entries, [userId]: [...userEntries, entry] } };
-    });
-
-    try {
-      const res = await fetch('/api/entries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          date: entry.date,
-          shift: entry.shift,
-          intensity: entry.intensity,
-          feedback: entry.feedback,
-          timestamp: entry.timestamp
-        })
-      });
-      if (res.ok) {
-        // Reload from server to ensure consistency (server-assigned id etc.)
-        await loadAthleteEntries(userId);
-      }
-    } catch (err) {
-      console.error('Failed to save entry', err);
-    }
-  }, [loadAthleteEntries]);
-
-  const getEntries = useCallback((userId: string, days: number = 7): ShiftEntry[] => {
-    const all = data.entries[userId] || [];
-    if (days === 0) return [...all].sort((a, b) => a.timestamp - b.timestamp);
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const cutoff = startOfToday - ((days - 1) * 86400000);
-    return all.filter(e => e.timestamp >= cutoff).sort((a, b) => a.timestamp - b.timestamp);
-  }, [data.entries]);
-
-  const getTodayEntries = useCallback((userId: string): ShiftEntry[] => {
-    const all = data.entries[userId] || [];
-    const now = new Date();
-    const dateStr = now.toISOString().split('T')[0];
-    return all.filter(e => e.date === dateStr);
-  }, [data.entries]);
-
-  const getAllEntries = useCallback((userId: string): ShiftEntry[] => {
-    return [...(data.entries[userId] || [])].sort((a, b) => a.timestamp - b.timestamp);
-  }, [data.entries]);
-
-  const deleteAthlete = useCallback(async (userId: string) => {
-    setData(prev => {
-      const newUsers = prev.users.filter(u => u.id !== userId);
-      const newEntries = { ...prev.entries };
-      delete newEntries[userId];
-      return { ...prev, users: newUsers, entries: newEntries };
-    });
-    
-    try {
-      await fetch(`/api/athletes?id=${userId}`, { method: 'DELETE' });
-      await fetch(`/api/entries?userId=${userId}`, { method: 'DELETE' });
-    } catch (err) {
-      console.error('Failed to delete', err);
-    }
-  }, []);
-
-  const generateMockData = useCallback(async (userId: string) => {
-    const now = new Date();
-    const shifts = ['Manhã', 'Tarde', 'Noite'];
-    
-    // Build all 365 days of entries
-    const allEntries: any[] = [];
-    for (let i = 364; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
-      const dayIndex = 364 - i;
-      
-      let pList: string[] = [];
-      if ((dayIndex % 30 >= 12 && dayIndex % 30 <= 18)) {
-        pList = ['Grupo A', 'Grupo B', 'Grupo C', 'Grupo D'];
-      } else if (dayIndex % 30 >= 19 && dayIndex % 30 <= 25) {
-        pList = ['Grupo A', 'Grupo B', 'Grupo B', 'Grupo C', 'Grupo C'];
-      } else {
-        pList = ['Grupo A', 'Grupo A', 'Grupo B', 'Grupo B', 'Grupo B'];
-      }
-
-      shifts.forEach((shift, sIdx) => {
-        const randomGroup = pList[Math.floor(Math.random() * pList.length)];
-        const timestamp = new Date(dateStr + 'T12:00:00').getTime() + (sIdx * 1000 * 3600 * 4);
-        allEntries.push({ userId, date: dateStr, shift, feedback: randomGroup, intensity: 0, timestamp });
-      });
-    }
-
-    // Send in batches of 90 entries (30 days × 3 shifts) to avoid Vercel limits
-    const BATCH_SIZE = 90;
-    const allInserted: any[] = [];
-
-    try {
-      for (let start = 0; start < allEntries.length; start += BATCH_SIZE) {
-        const batch = allEntries.slice(start, start + BATCH_SIZE);
-        const res = await fetch('/api/entries', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(batch)
-        });
-        if (!res.ok) {
-          const errText = await res.text();
-          console.error('Batch failed:', errText);
-          alert('Erro ao gerar dados sintéticos.');
-          return;
-        }
-        const result = await res.json();
-        allInserted.push(...result.inserted);
-      }
-
-      const mappedEntries = allInserted.map((e: any) => ({
-        id: e.id,
-        date: e.date,
-        shift: e.shift,
-        intensity: e.intensity,
-        feedback: e.feedback,
-        timestamp: Number(e.timestamp)
-      }));
-      
-      setData(prev => ({
-        ...prev,
-        entries: { ...prev.entries, [userId]: mappedEntries }
-      }));
-      alert('1 ano de dados de calibração gerados com sucesso!');
-    } catch (err) {
-      console.error(err);
-      alert('Erro de conexão ao gerar dados.');
-    }
-  }, []);
-
-  const clearEntries = useCallback(async (userId: string) => {
-    setData(prev => {
-      const newEntries = { ...prev.entries };
-      delete newEntries[userId];
-      return { ...prev, entries: newEntries };
-    });
-    try {
-      await fetch(`/api/entries?userId=${userId}`, { method: 'DELETE' });
-    } catch (err) {
-      console.error('Failed to clear', err);
-    }
-  }, []);
-
-  // Removed findUser as auth is now API based via login()
-
-  const subscribeToPushNotifications = useCallback(async (userId: string) => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      console.warn('Push notifications are not supported in this browser.');
-      return false;
-    }
-
-    try {
-      // 1. Get VAPID public key
-      const keyRes = await fetch('/api/push');
-      if (!keyRes.ok) return false;
-      const { publicKey } = await keyRes.json();
-
-      // 2. Request permission
+      const { publicKey } = await apiFetch('/api/push');
       const permission = await Notification.requestPermission();
-      if (permission !== 'granted') {
-        console.warn('Push notification permission denied.');
-        return false;
-      }
-
-      // 3. Register subscription
+      if (permission !== 'granted') return false;
+      
       const registration = await navigator.serviceWorker.ready;
+      
+      const padding = '='.repeat((4 - publicKey.length % 4) % 4);
+      const base64 = (publicKey + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
+      
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
+        applicationServerKey: outputArray
       });
-
-      // 4. Save subscription on backend
-      const saveRes = await fetch('/api/push', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, subscription })
-      });
-
-      return saveRes.ok;
-    } catch (err) {
-      console.error('Failed to subscribe to push notifications', err);
+      
+      await apiFetch('/api/push', { method: 'POST', body: JSON.stringify({ userId, subscription }) });
+      return true;
+    } catch {
       return false;
     }
   }, []);
-
-  return {
-    loading,
-    data,
-    auth,
-    login,
-    logout,
-    registerAthlete,
-    getAthletes,
-    saveEntry,
-    getEntries,
-    getTodayEntries,
-    getAllEntries,
-    generateMockData,
-    clearEntries,
-    deleteAthlete,
-    loadAthleteEntries,
-    subscribeToPushNotifications,
-  };
 }

@@ -1,6 +1,14 @@
 import { neon } from '@neondatabase/serverless';
+import { verifyToken } from './_utils/auth';
 
 export default async function handler(req: any, res: any) {
+  let tokenUser;
+  try {
+    tokenUser = verifyToken(req);
+  } catch (err: any) {
+    return res.status(401).json({ error: err.message });
+  }
+
   const sql = neon(process.env.DATABASE_URL!);
 
   // ── GET ──────────────────────────────────────────────────────────────
@@ -8,6 +16,9 @@ export default async function handler(req: any, res: any) {
     const { userId } = req.query;
     if (!userId) {
       return res.status(400).json({ error: 'userId é obrigatório' });
+    }
+    if (tokenUser.role !== 'admin' && String(tokenUser.id) !== String(userId)) {
+      return res.status(403).json({ error: 'Acesso negado' });
     }
     try {
       const rows = await sql`
@@ -51,6 +62,9 @@ export default async function handler(req: any, res: any) {
       if (!userId || !date || !shift) {
         return res.status(400).json({ error: 'userId, date e shift são obrigatórios' });
       }
+      if (tokenUser.role !== 'admin' && String(tokenUser.id) !== String(userId)) {
+        return res.status(403).json({ error: 'Acesso negado' });
+      }
       const rows = await sql`
         INSERT INTO shifts(user_id, date, shift, intensity, feedback, timestamp)
         VALUES (${userId}, ${date}, ${shift}, ${intensity ?? 0}, ${feedback}, ${timestamp})
@@ -66,6 +80,9 @@ export default async function handler(req: any, res: any) {
 
   // ── DELETE ────────────────────────────────────────────────────────────
   if (req.method === 'DELETE') {
+    if (tokenUser.role !== 'admin') {
+      return res.status(403).json({ error: 'Apenas admins podem apagar registros' });
+    }
     const { userId } = req.query;
     try {
       if (userId) {
