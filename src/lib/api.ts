@@ -8,8 +8,9 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   if (savedAuth) {
     try {
       const auth = JSON.parse(savedAuth);
-      if (auth.token) {
-        headers['Authorization'] = `Bearer ${auth.token}`;
+      const token = auth.token || auth.currentUser?.token;
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
     } catch (e) {
       // Ignore
