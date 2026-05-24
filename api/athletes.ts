@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import bcrypt from 'bcryptjs';
 
 // Vercel Serverless Function
 export default async function handler(req, res) {
@@ -6,7 +7,6 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(50)`;
       const athletes = await sql`SELECT id, name, role, whatsapp FROM users WHERE role = 'athlete'`;
       return res.status(200).json(athletes);
     } catch (error) {
@@ -17,10 +17,10 @@ export default async function handler(req, res) {
   if (req.method === 'POST') {
     const { name, pin, whatsapp } = req.body;
     try {
-      await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(50)`;
+      const hashedPin = bcrypt.hashSync(pin, 10);
       const result = await sql`
         INSERT INTO users (name, role, pin, whatsapp) 
-        VALUES (${name}, 'athlete', ${pin}, ${whatsapp || null})
+        VALUES (${name}, 'athlete', ${hashedPin}, ${whatsapp || null})
         RETURNING id, name, role, whatsapp
       `;
       return res.status(201).json(result[0]);
