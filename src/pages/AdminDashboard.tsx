@@ -107,8 +107,7 @@ export const AdminDashboard = ({ athletes, getEntries, getAllEntries, getTodayEn
 
               if (points.length >= 2) {
                 const todayPt = points[points.length - 1];
-                const yesterdayPt = points[points.length - 2];
-                const delta = calculateDeltaPercentage(todayPt.generalEntropy, yesterdayPt.generalEntropy);
+                const delta = todayPt.generalDelta;
                 isAlert = Math.abs(delta) > 15;
                 deltaStr = `${delta > 0 ? '+' : ''}${delta.toFixed(1)}% variação`;
               } else if (points.length === 1) {
@@ -235,9 +234,7 @@ function DailySummary({ athletes, getTodayEntries, getAllEntries }: { athletes: 
       const points = generateDailyEntropyPoints(all);
       if (points.length >= 2) {
         const todayPt = points[points.length - 1];
-        const yesterdayPt = points[points.length - 2];
-        const delta = calculateDeltaPercentage(todayPt.generalEntropy, yesterdayPt.generalEntropy);
-        if (Math.abs(delta) > 15) {
+        if (Math.abs(todayPt.generalDelta) > 15) {
           alerts++;
         }
       }
