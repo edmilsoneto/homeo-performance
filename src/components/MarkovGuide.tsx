@@ -17,8 +17,8 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
   const weekdayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
   const nextWeekdayIndex = (selectedWeekday + 1) % 7;
 
-  const { points, transitionMatrix, historicalAverage, totalTransitions } = useMemo(() => {
-    if (!selectedAthleteId) return { points: [], transitionMatrix: null, historicalAverage: null, totalTransitions: 0 };
+  const { transitionMatrix, historicalAverage, totalTransitions } = useMemo(() => {
+    if (!selectedAthleteId) return { transitionMatrix: null, historicalAverage: null, totalTransitions: 0 };
     
     const all = getAllEntries(selectedAthleteId);
     const pts = generateDailyEntropyPoints(all);
@@ -43,10 +43,9 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
       }
     }
 
-    return { points: pts, transitionMatrix: matrix, historicalAverage: avg, totalTransitions: count };
+    return { transitionMatrix: matrix, historicalAverage: avg, totalTransitions: count };
   }, [selectedAthleteId, getAllEntries, selectedWeekday]);
 
-  const probs = transitionMatrix ? transitionMatrix[simulatedState] : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
