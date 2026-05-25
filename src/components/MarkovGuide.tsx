@@ -17,15 +17,19 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
     const all = getAllEntries(selectedAthleteId);
     const pts = generateDailyEntropyPoints(all);
     
-    if (pts.length < 2) return { summary: null };
+    if (pts.length < 1) return { summary: null };
 
     const ptToday = pts[pts.length - 1];
-    const ptYesterday = pts[pts.length - 2];
-    const delta = ptToday.generalEntropy - ptYesterday.generalEntropy;
-
     const todayDate = new Date(ptToday.date + 'T12:00:00');
     const todayWeekday = todayDate.getDay();
     const nextWeekday = (todayWeekday + 1) % 7;
+
+    // Calculate historical average for THIS weekday (excluding today itself to get the pure past average, or including it, let's include all past)
+    const weekdayPts = pts.filter(p => new Date(p.date + 'T12:00:00').getDay() === todayWeekday);
+    const historicalAverage = weekdayPts.length > 0 ? weekdayPts.reduce((acc, p) => acc + p.generalEntropy, 0) / weekdayPts.length : ptToday.generalEntropy;
+
+    // Delta is now compared to the historical average for this weekday
+    const delta = ptToday.generalEntropy - historicalAverage;
 
     const matrix = buildTransitionMatrix(pts, todayWeekday);
     const todayState = getEntropyState(ptToday.generalEntropy);
@@ -108,7 +112,7 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
 
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                  Oscilação de Ontem
+                  Oscilação do Padrão ({historicalAverage.toFixed(2)})
                 </span>
                 <span style={{ 
                   fontSize: 18, fontWeight: 800, 
@@ -116,7 +120,7 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
                   background: summary.delta > 0 ? 'rgba(239,68,68,0.1)' : summary.delta < 0 ? 'rgba(16,185,129,0.1)' : '#1e293b',
                   padding: '6px 12px', borderRadius: 10
                 }}>
-                  {summary.delta > 0 ? '▲ Subiu' : summary.delta < 0 ? '▼ Caiu' : '▬ Estável'} {Math.abs(summary.delta).toFixed(2)}
+                  {summary.delta > 0 ? '▲ Acima' : summary.delta < 0 ? '▼ Abaixo' : '▬ Na Média'} {Math.abs(summary.delta).toFixed(2)}
                 </span>
               </div>
             </div>
