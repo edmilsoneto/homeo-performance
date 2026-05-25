@@ -11,19 +11,19 @@ export function getEntropyState(entropy: number): MarkovState {
 
 export function getStateLabel(state: MarkovState): string {
   switch (state) {
-    case 1: return 'Sólido';
-    case 2: return 'Normal';
-    case 3: return 'Alerta';
-    case 4: return 'Caos';
+    case 1: return 'Nível 1';
+    case 2: return 'Nível 2';
+    case 3: return 'Nível 3';
+    case 4: return 'Nível 4';
   }
 }
 
 export function getStateColor(state: MarkovState): string {
   switch (state) {
-    case 1: return '#e2e8f0'; // Slate 200
-    case 2: return '#cbd5e1'; // Slate 300
-    case 3: return '#94a3b8'; // Slate 400
-    case 4: return '#64748b'; // Slate 500
+    case 1: return '#0284c7'; // Sky 600
+    case 2: return '#0ea5e9'; // Sky 500
+    case 3: return '#38bdf8'; // Sky 400
+    case 4: return '#00f0ff'; // Neon Cyan
   }
 }
 
