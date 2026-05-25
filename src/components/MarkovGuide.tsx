@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Network, ArrowRight, Activity, AlertTriangle } from 'lucide-react';
+import { Network, ArrowRight, Activity, AlertTriangle, Brain } from 'lucide-react';
 import type { User, ShiftEntry } from '../types';
 import { generateDailyEntropyPoints } from '../utils/entropy';
 import { buildTransitionMatrix, getStateLabel, getStateColor } from '../utils/markov';
@@ -17,8 +17,8 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
   const weekdayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
   const nextWeekdayIndex = (selectedWeekday + 1) % 7;
 
-  const { points, markovResult, historicalAverage, totalTransitions } = useMemo(() => {
-    if (!selectedAthleteId) return { points: [], markovResult: null, historicalAverage: null, totalTransitions: 0 };
+  const { points, markovResult, historicalAverage, totalTransitions, latestPrediction } = useMemo(() => {
+    if (!selectedAthleteId) return { points: [], markovResult: null, historicalAverage: null, totalTransitions: 0, latestPrediction: null };
     
     const all = getAllEntries(selectedAthleteId);
     const pts = generateDailyEntropyPoints(all);
@@ -43,7 +43,30 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
       }
     }
 
-    return { points: pts, markovResult: matrix, historicalAverage: avg, totalTransitions: count };
+    // Compute prediction based on the literal "today" (most recent entry)
+    let prediction = null;
+    if (pts.length > 0) {
+      const latestPt = pts[pts.length - 1];
+      const latestDate = new Date(latestPt.date + 'T12:00:00');
+      const latestWeekday = latestDate.getDay();
+      
+      const latestMatrix = buildTransitionMatrix(pts, latestWeekday);
+      const latestState = getEntropyState(latestPt.generalEntropy);
+      
+      const probs = latestMatrix.percentages[latestState];
+      const totalOccurrences = latestMatrix.rowTotals[latestState];
+      
+      if (totalOccurrences > 0) {
+        const chanceToStay = probs[latestState];
+        const chanceToChange = 100 - chanceToStay;
+        prediction = {
+          entropy: latestPt.generalEntropy,
+          chanceToChange: chanceToChange
+        };
+      }
+    }
+
+    return { points: pts, markovResult: matrix, historicalAverage: avg, totalTransitions: count, latestPrediction: prediction };
   }, [selectedAthleteId, getAllEntries, selectedWeekday]);
 
 
@@ -103,6 +126,18 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
               </span>
             )}
           </div>
+
+          {latestPrediction && (
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(16,185,129,0.1), #0a0e17)', border: '1px solid rgba(16,185,129,0.2)',
+              padding: '16px', borderRadius: '16px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: 12
+            }}>
+              <Brain style={{ width: 24, height: 24, color: '#10b981' }} />
+              <p style={{ fontSize: 14, color: '#f1f5f9', margin: 0 }}>
+                Com base na entropia de hoje (<strong>{latestPrediction.entropy.toFixed(2)}</strong>), a de amanhã tem <strong>{latestPrediction.chanceToChange.toFixed(1)}%</strong> de chance de mudar de estado.
+              </p>
+            </div>
+          )}
 
           <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 20 }}>
             Baseado em <strong>{totalTransitions} semanas</strong> de dados históricos, veja as probabilidades exatas de como a performance da <strong>{weekdayNames[nextWeekdayIndex]}</strong> reage a cada estado da <strong>{weekdayNames[selectedWeekday]}</strong>.
