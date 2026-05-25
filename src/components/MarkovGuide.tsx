@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Network, ArrowRight, Activity, AlertTriangle, Brain } from 'lucide-react';
 import type { User, ShiftEntry } from '../types';
 import { generateDailyEntropyPoints } from '../utils/entropy';
-import { buildTransitionMatrix, getStateLabel, getStateColor } from '../utils/markov';
+import { buildTransitionMatrix, getEntropyState, getStateLabel, getStateColor } from '../utils/markov';
 import type { MarkovState } from '../utils/markov';
 
 interface Props {
@@ -17,8 +17,8 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
   const weekdayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
   const nextWeekdayIndex = (selectedWeekday + 1) % 7;
 
-  const { points, markovResult, historicalAverage, totalTransitions, latestPrediction } = useMemo(() => {
-    if (!selectedAthleteId) return { points: [], markovResult: null, historicalAverage: null, totalTransitions: 0, latestPrediction: null };
+  const { markovResult, historicalAverage, totalTransitions, latestPrediction } = useMemo(() => {
+    if (!selectedAthleteId) return { markovResult: null, historicalAverage: null, totalTransitions: 0, latestPrediction: null };
     
     const all = getAllEntries(selectedAthleteId);
     const pts = generateDailyEntropyPoints(all);
@@ -66,7 +66,7 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
       }
     }
 
-    return { points: pts, markovResult: matrix, historicalAverage: avg, totalTransitions: count, latestPrediction: prediction };
+    return { markovResult: matrix, historicalAverage: avg, totalTransitions: count, latestPrediction: prediction };
   }, [selectedAthleteId, getAllEntries, selectedWeekday]);
 
 
