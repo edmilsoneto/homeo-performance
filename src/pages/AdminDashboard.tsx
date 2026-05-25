@@ -2,10 +2,11 @@ import { useState, useMemo } from 'react';
 import type { User, ShiftEntry } from '../types';
 import { generateDailyEntropyPoints } from '../utils/entropy';
 import { AthleteDashboard } from './AthleteDashboard';
+import { MarkovGuide } from '../components/MarkovGuide';
 import {
   Users, ChevronRight, AlertTriangle, ArrowLeft,
   Database, Trash2, Calendar, UserPlus, X, Activity,
-  MessageSquare
+  MessageSquare, Network
 } from 'lucide-react';
 
 interface Props {
@@ -22,7 +23,7 @@ interface Props {
 
 export const AdminDashboard = ({ athletes, getEntries, getAllEntries, getTodayEntries, registerAthlete, deleteAthlete, generateMockData, clearEntries, loadAthleteEntries }: Props) => {
   const [selectedAthlete, setSelectedAthlete] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'daily' | 'athletes'>('daily');
+  const [activeTab, setActiveTab] = useState<'daily' | 'athletes' | 'markov'>('daily');
   const [isRegistering, setIsRegistering] = useState(false);
 
   if (selectedAthlete) {
@@ -65,10 +66,26 @@ export const AdminDashboard = ({ athletes, getEntries, getAllEntries, getTodayEn
         >
           <Users style={{ width: 16, height: 16 }} /> Equipe
         </button>
+        <button
+          onClick={() => setActiveTab('markov')}
+          style={{
+            flex: 1, padding: '12px', borderRadius: 14, border: 'none',
+            background: activeTab === 'markov' ? 'rgba(16,185,129,0.1)' : 'transparent',
+            color: activeTab === 'markov' ? '#10b981' : '#64748b',
+            fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s',
+          }}
+        >
+          <Network style={{ width: 16, height: 16 }} /> Guia de Markov
+        </button>
       </div>
 
       {activeTab === 'daily' && (
         <DailySummary athletes={athletes} getTodayEntries={getTodayEntries} getAllEntries={getAllEntries} />
+      )}
+
+      {activeTab === 'markov' && (
+        <MarkovGuide athletes={athletes} getAllEntries={getAllEntries} />
       )}
 
       {activeTab === 'athletes' && (
