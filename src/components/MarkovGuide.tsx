@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Network, ArrowRight, Activity, AlertTriangle, Brain } from 'lucide-react';
+import { AlertTriangle, Brain } from 'lucide-react';
 import type { User, ShiftEntry } from '../types';
 import { generateDailyEntropyPoints } from '../utils/entropy';
 import { buildTransitionMatrix, getEntropyState, getStateLabel, getStateColor } from '../utils/markov';
@@ -11,6 +11,9 @@ interface Props {
 }
 
 export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
+  const [selectedAthleteId, setSelectedAthleteId] = useState<string>('');
+  const weekdayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
   const { summary } = useMemo(() => {
     if (!selectedAthleteId) return { summary: null };
     
@@ -45,6 +48,7 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
         todayWeekday,
         nextWeekday,
         delta,
+        historicalAverage,
         chanceToChange,
         probs,
         totalOccurrences
@@ -112,7 +116,7 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
 
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
-                  Oscilação do Padrão ({historicalAverage.toFixed(2)})
+                  Oscilação do Padrão ({summary.historicalAverage.toFixed(2)})
                 </span>
                 <span style={{ 
                   fontSize: 18, fontWeight: 800, 
