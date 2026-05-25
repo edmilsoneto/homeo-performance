@@ -20,10 +20,10 @@ export function getStateLabel(state: MarkovState): string {
 
 export function getStateColor(state: MarkovState): string {
   switch (state) {
-    case 1: return '#10b981'; // Emerald
-    case 2: return '#00a8ff'; // Blue
-    case 3: return '#f59e0b'; // Amber
-    case 4: return '#ef4444'; // Red
+    case 1: return '#e2e8f0'; // Slate 200
+    case 2: return '#cbd5e1'; // Slate 300
+    case 3: return '#94a3b8'; // Slate 400
+    case 4: return '#64748b'; // Slate 500
   }
 }
 

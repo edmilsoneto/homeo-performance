@@ -120,8 +120,8 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
                 </span>
                 <span style={{ 
                   fontSize: 18, fontWeight: 800, 
-                  color: summary.delta > 0 ? '#ef4444' : summary.delta < 0 ? '#10b981' : '#64748b',
-                  background: summary.delta > 0 ? 'rgba(239,68,68,0.1)' : summary.delta < 0 ? 'rgba(16,185,129,0.1)' : '#1e293b',
+                  color: '#cbd5e1',
+                  background: '#1e293b',
                   padding: '6px 12px', borderRadius: 10
                 }}>
                   {summary.delta > 0 ? '▲ Acima' : summary.delta < 0 ? '▼ Abaixo' : '▬ Na Média'} {Math.abs(summary.delta).toFixed(2)}
