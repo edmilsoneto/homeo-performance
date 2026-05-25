@@ -190,33 +190,33 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
                       </span>
                     </div>
                   ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-                      {([1, 2, 3, 4] as MarkovState[]).map(targetState => {
-                        const p = probs![targetState];
-                        const count = absoluteCounts![targetState];
-                        const isZero = p === 0;
-                        const isHighest = Math.max(...Object.values(probs!)) === p && !isZero;
-                        
-                        return (
-                          <div key={targetState} style={{
-                            background: isHighest ? `${getStateColor(targetState)}15` : isZero ? 'transparent' : '#0f1520',
-                            border: `1px solid ${isHighest ? getStateColor(targetState) : isZero ? '#1e293b' : '#334155'}`,
-                            padding: '16px 12px', borderRadius: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-                            opacity: isZero ? 0.4 : 1, transition: 'all 0.2s'
-                          }}>
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                              {getStateLabel(targetState)} na {weekdayNames[nextWeekdayIndex]}
-                            </span>
-                            <span style={{ fontSize: 22, fontWeight: 900, color: isZero ? '#475569' : getStateColor(targetState) }}>
-                              {p.toFixed(1)}%
-                            </span>
-                            {!isZero && (
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      {([1, 2, 3, 4] as MarkovState[])
+                        .filter(targetState => probs![targetState] > 0)
+                        .map(targetState => {
+                          const p = probs![targetState];
+                          const count = absoluteCounts![targetState];
+                          const isHighest = Math.max(...Object.values(probs!)) === p;
+                          
+                          return (
+                            <div key={targetState} style={{
+                              flex: 1,
+                              background: isHighest ? `${getStateColor(targetState)}15` : '#0f1520',
+                              border: `1px solid ${isHighest ? getStateColor(targetState) : '#334155'}`,
+                              padding: '16px 12px', borderRadius: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                              transition: 'all 0.2s'
+                            }}>
+                              <span style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                {getStateLabel(targetState)} na {weekdayNames[nextWeekdayIndex]}
+                              </span>
+                              <span style={{ fontSize: 22, fontWeight: 900, color: getStateColor(targetState) }}>
+                                {p.toFixed(1)}%
+                              </span>
                               <span style={{ fontSize: 9, color: '#64748b' }}>
                                 Ocorreu {count} {count === 1 ? 'vez' : 'vezes'}
                               </span>
-                            )}
-                          </div>
-                        );
+                            </div>
+                          );
                       })}
                     </div>
                   )}
