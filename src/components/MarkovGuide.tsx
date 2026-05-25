@@ -17,8 +17,8 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
   const weekdayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
   const nextWeekdayIndex = (selectedWeekday + 1) % 7;
 
-  const { transitionMatrix, historicalAverage, totalTransitions } = useMemo(() => {
-    if (!selectedAthleteId) return { transitionMatrix: null, historicalAverage: null, totalTransitions: 0 };
+  const { points, markovResult, historicalAverage, totalTransitions } = useMemo(() => {
+    if (!selectedAthleteId) return { points: [], markovResult: null, historicalAverage: null, totalTransitions: 0 };
     
     const all = getAllEntries(selectedAthleteId);
     const pts = generateDailyEntropyPoints(all);
@@ -43,7 +43,7 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
       }
     }
 
-    return { transitionMatrix: matrix, historicalAverage: avg, totalTransitions: count };
+    return { points: pts, markovResult: matrix, historicalAverage: avg, totalTransitions: count };
   }, [selectedAthleteId, getAllEntries, selectedWeekday]);
 
 
@@ -110,10 +110,11 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {([1, 2, 3, 4] as MarkovState[]).map(originState => {
-              const probs = transitionMatrix ? transitionMatrix[originState] : null;
+              const probs = markovResult ? markovResult.percentages[originState] : null;
+              const absoluteCounts = markovResult ? markovResult.counts[originState] : null;
+              const occurrences = markovResult ? markovResult.rowTotals[originState] : 0;
               
-              // Verify if there is any data for this origin state
-              const hasData = probs && Object.values(probs).some(v => v > 0);
+              const hasData = occurrences > 0;
 
               return (
                 <div key={originState} style={{
@@ -139,6 +140,11 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
                     }}>
                       {getStateLabel(originState)}
                     </span>
+                    {hasData && (
+                      <span style={{ fontSize: 10, color: '#64748b', background: '#1e293b', padding: '2px 8px', borderRadius: 6 }}>
+                        (Base: {occurrences} {occurrences === 1 ? 'semana' : 'semanas'})
+                      </span>
+                    )}
                   </div>
 
                   {!hasData ? (
@@ -152,6 +158,7 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
                       {([1, 2, 3, 4] as MarkovState[]).map(targetState => {
                         const p = probs![targetState];
+                        const count = absoluteCounts![targetState];
                         const isZero = p === 0;
                         const isHighest = Math.max(...Object.values(probs!)) === p && !isZero;
                         
@@ -168,6 +175,11 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
                             <span style={{ fontSize: 22, fontWeight: 900, color: isZero ? '#475569' : getStateColor(targetState) }}>
                               {p.toFixed(1)}%
                             </span>
+                            {!isZero && (
+                              <span style={{ fontSize: 9, color: '#64748b' }}>
+                                Ocorreu {count} {count === 1 ? 'vez' : 'vezes'}
+                              </span>
+                            )}
                           </div>
                         );
                       })}

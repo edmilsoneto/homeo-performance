@@ -40,7 +40,13 @@ const createEmptyMatrix = (): TransitionMatrix => ({
   4: { 1: 0, 2: 0, 3: 0, 4: 0 },
 });
 
-export function buildTransitionMatrix(points: EntropyPoint[], fromWeekday?: number): TransitionMatrix {
+export interface MarkovResult {
+  percentages: TransitionMatrix;
+  counts: TransitionMatrix;
+  rowTotals: Record<MarkovState, number>;
+}
+
+export function buildTransitionMatrix(points: EntropyPoint[], fromWeekday?: number): MarkovResult {
   const matrix = createEmptyMatrix();
   const counts: Record<MarkovState, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
 
@@ -78,5 +84,5 @@ export function buildTransitionMatrix(points: EntropyPoint[], fromWeekday?: numb
     }
   }
 
-  return result;
+  return { percentages: result, counts: matrix, rowTotals: counts };
 }
