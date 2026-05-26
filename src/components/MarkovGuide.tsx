@@ -103,14 +103,6 @@ export const MarkovGuide: React.FC<Props> = ({ athletes, getAllEntries }) => {
                   <span style={{ fontSize: 48, fontWeight: 900, color: getStateColor(summary.todayState), lineHeight: 1 }}>
                     {summary.todayEntropy.toFixed(2)}
                   </span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingBottom: 4 }}>
-                    <span style={{
-                      background: `${getStateColor(summary.todayState)}20`, color: getStateColor(summary.todayState),
-                      padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 800, textTransform: 'uppercase'
-                    }}>
-                      {getStateLabel(summary.todayState)}
-                    </span>
-                  </div>
                 </div>
               </div>
 
