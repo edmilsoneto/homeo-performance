@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless';
+import { sendPushNotification } from './_push_service';
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -53,15 +54,30 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Return pending list (push notifications disabled — requires working web-push setup)
+    let totalSent = 0;
+    let totalFailed = 0;
+
+    // Send push notifications to all pending athletes
+    for (const athlete of pendingAthletes) {
+      const payload = {
+        title: `Lembrete: Turno da ${targetShift}`,
+        body: `Não esqueça de registrar como você se sentiu no turno da ${targetShift} hoje. Leva só 10 segundos!`,
+        data: { url: '/atleta' }
+      };
+
+      const result = await sendPushNotification(String(athlete.id), payload);
+      totalSent += result.sent || 0;
+      totalFailed += result.failed || 0;
+    }
+
     return res.status(200).json({
       message: `Lembretes processados para o turno da ${targetShift}`,
       date: dateStr,
       shift: targetShift,
       stats: {
         athletesPendingCount: pendingAthletes.length,
-        totalNotificationsSent: 0,
-        totalNotificationsFailed: 0
+        totalNotificationsSent: totalSent,
+        totalNotificationsFailed: totalFailed
       },
       pendingAthletes: pendingAthletes.map((a: any) => ({ id: a.id, name: a.name, whatsapp: a.whatsapp }))
     });
