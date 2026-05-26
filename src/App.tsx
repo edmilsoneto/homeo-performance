@@ -16,9 +16,10 @@ const AthleteView = () => {
   const { saveEntry } = useMutateEntries();
   const subscribe = usePushSubscription();
 
-  const [notificationStatus, setNotificationStatus] = useState<string>(
-    'Notification' in window ? Notification.permission : 'denied'
-  );
+  const [notificationStatus, setNotificationStatus] = useState<string>(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'unsupported';
+    return Notification.permission;
+  });
 
   const handleEnablePush = async () => {
     if (userId) {
@@ -66,15 +67,25 @@ const AthleteView = () => {
           <span style={{ color: '#60a5fa', fontSize: 13, fontWeight: 500 }}>
             Ative as notificações para receber os lembretes de turno.
           </span>
-          <button
-            onClick={handleEnablePush}
-            style={{
-              background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8,
-              padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer'
-            }}
-          >
+          <button onClick={handleEnablePush} style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             Ativar
           </button>
+        </div>
+      )}
+      
+      {notificationStatus === 'denied' && (
+        <div style={{ background: '#ef444420', padding: '12px 16px', borderBottom: '1px solid #ef444440' }}>
+          <span style={{ color: '#f87171', fontSize: 13, fontWeight: 500 }}>
+            ⚠️ As notificações estão bloqueadas. Vá nas configurações do seu navegador para liberar.
+          </span>
+        </div>
+      )}
+
+      {notificationStatus === 'unsupported' && (
+        <div style={{ background: '#f59e0b20', padding: '12px 16px', borderBottom: '1px solid #f59e0b40' }}>
+          <span style={{ color: '#fbbf24', fontSize: 13, fontWeight: 500 }}>
+            📱 Para receber notificações no iPhone, clique em Compartilhar e escolha "Adicionar à Tela de Início". Feche o navegador e abra o app instalado.
+          </span>
         </div>
       )}
       <div style={{ padding: '0 16px', maxWidth: 480, margin: '0 auto' }}>
