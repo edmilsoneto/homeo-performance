@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { LoginScreen } from './pages/LoginScreen';
@@ -16,9 +16,23 @@ const AthleteView = () => {
   const { saveEntry } = useMutateEntries();
   const subscribe = usePushSubscription();
 
+  const [notificationStatus, setNotificationStatus] = useState<string>(
+    'Notification' in window ? Notification.permission : 'denied'
+  );
+
+  const handleEnablePush = async () => {
+    if (userId) {
+      const success = await subscribe(userId as string);
+      if (success) setNotificationStatus('granted');
+    }
+  };
+
   useEffect(() => {
-    if (userId) subscribe(userId as string);
-  }, [userId, subscribe]);
+    // If already granted, ensure subscription is updated silently in the background
+    if (userId && notificationStatus === 'granted') {
+      subscribe(userId as string);
+    }
+  }, [userId, notificationStatus, subscribe]);
 
   if (isLoading) return <div style={{ color: '#fff', textAlign: 'center', marginTop: 50 }}>Carregando...</div>;
 
@@ -46,6 +60,23 @@ const AthleteView = () => {
             Sair
           </button>
         </div>
+
+      {notificationStatus === 'default' && (
+        <div style={{ background: '#3b82f620', padding: '12px 16px', borderBottom: '1px solid #3b82f640', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ color: '#60a5fa', fontSize: 13, fontWeight: 500 }}>
+            Ative as notificações para receber os lembretes de turno.
+          </span>
+          <button
+            onClick={handleEnablePush}
+            style={{
+              background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8,
+              padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer'
+            }}
+          >
+            Ativar
+          </button>
+        </div>
+      )}
       <div style={{ padding: '0 16px', maxWidth: 480, margin: '0 auto' }}>
         <RegistrationScreen 
           userName={auth.currentUser?.name || ''}
