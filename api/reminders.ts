@@ -1,5 +1,39 @@
 import { neon } from '@neondatabase/serverless';
-import { sendPushNotification } from './_push_service';
+import webpush from 'web-push';
+
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BKnbcJPC7NQ37L87utz-N1KxskF6ta7sUCNHyDhIViJhil9HerhlIC75KLNZz08D4mv_AdzAQ0EeK23ueyF0P9k';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'ZcKeBKDp2zVBenLIOiGVTTwsJGWgj_q9zvyy3N1Ulg0';
+
+webpush.setVapidDetails(
+  'mailto:suporte@homeoperformance.com',
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
+);
+
+async function sendPushNotification(sql: any, userId: string, payload: any) {
+  try {
+    const rows = await sql`SELECT id, subscription FROM push_subscriptions WHERE user_id = ${userId}`;
+    if (rows.length === 0) return { sent: 0, failed: 0 };
+    
+    let sent = 0, failed = 0;
+    for (const row of rows) {
+      try {
+        const sub = JSON.parse(row.subscription);
+        await webpush.sendNotification(sub, JSON.stringify(payload));
+        sent++;
+      } catch (error: any) {
+        failed++;
+        if (error.statusCode === 410 || error.statusCode === 404) {
+          await sql`DELETE FROM push_subscriptions WHERE id = ${row.id}`;
+        }
+      }
+    }
+    return { sent, failed };
+  } catch (err) {
+    console.error('Erro na função sendPushNotification:', err);
+    return { sent: 0, failed: 0, error: err };
+  }
+}
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'GET' && req.method !== 'POST') {
@@ -65,7 +99,7 @@ export default async function handler(req: any, res: any) {
         data: { url: '/atleta' }
       };
 
-      const result = await sendPushNotification(String(athlete.id), payload);
+      const result = await sendPushNotification(sql, String(athlete.id), payload);
       totalSent += result.sent || 0;
       totalFailed += result.failed || 0;
     }
